@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { VirtuosoMasonry } from "@virtuoso.dev/masonry";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Item, ItemsPage } from "@/lib/types";
+import { distribute } from "@/lib/masonry";
 import { GalleryItem } from "./GalleryItem";
 import { Spinner } from "@/components/atoms/Spinner";
 
-// VirtuosoMasonry takes a plain number, so column count is derived from
-// viewport width: 2 (mobile) / 3 (tablet+laptop) / 4 (wide).
+// Column count: 2 (mobile) / 3 (tablet+laptop) / 4 (wide).
+// SSR default is 4 (desktop-first) so the first paint doesn't reflow on
+// desktop; smaller screens correct once on mount.
 function useColumnCount() {
-  const [columns, setColumns] = useState(3);
+  const [columns, setColumns] = useState(4);
   useEffect(() => {
     const compute = () =>
       setColumns(window.innerWidth < 640 ? 2 : window.innerWidth < 1280 ? 3 : 4);
@@ -20,14 +21,14 @@ function useColumnCount() {
   return columns;
 }
 
-const ItemContent = ({ data }: { data: Item }) => <GalleryItem item={data} />;
-
 type GalleryProps = {
   initialItems: Item[];
   initialCursor: string | null;
+  type?: "image" | "video";
+  tag?: string;
 };
 
-export function Gallery({ initialItems, initialCursor }: GalleryProps) {
+export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps) {
   const columnCount = useColumnCount();
   const [items, setItems] = useState(initialItems);
   const [cursor, setCursor] = useState(initialCursor);
@@ -35,12 +36,23 @@ export function Gallery({ initialItems, initialCursor }: GalleryProps) {
   const [loading, setLoading] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Server and client run the same deterministic distribution, so SSR HTML
+  // matches hydration exactly — no layout shift. Appending pages re-runs it
+  // with the same prefix, so existing tiles keep their positions.
+  const columns = useMemo(
+    () => distribute(items, columnCount),
+    [items, columnCount]
+  );
+
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !cursor) return;
     loadingRef.current = true;
     setLoading(true);
     try {
-      const res = await fetch(`/api/items?cursor=${encodeURIComponent(cursor)}`);
+      const params = new URLSearchParams({ cursor });
+      if (type) params.set("type", type);
+      if (tag) params.set("tag", tag);
+      const res = await fetch(`/api/items?${params}`);
       const page: ItemsPage = await res.json();
       setItems((prev) => [...prev, ...page.items]);
       setCursor(page.nextCursor);
@@ -48,30 +60,42 @@ export function Gallery({ initialItems, initialCursor }: GalleryProps) {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [cursor]);
+  }, [cursor, type, tag]);
 
-  // The masonry lib has no endReached — a sentinel under the grid triggers
-  // the next page as it approaches the viewport.
+  // Sentinel under the grid triggers the next page before the user reaches it.
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       ([entry]) => entry.isIntersecting && loadMore(),
-      { rootMargin: "800px" } // prefetch well before the user hits the bottom
+      { rootMargin: "800px" }
     );
     io.observe(el);
     return () => io.disconnect();
   }, [loadMore]);
 
+  if (items.length === 0) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-1 text-center">
+        <p className="text-sm font-medium">Nothing here yet</p>
+        <p className="text-sm text-foreground/60">
+          New inspiration is added regularly — check back soon.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="-mx-2">
-      <VirtuosoMasonry
-        useWindowScroll
-        columnCount={columnCount}
-        data={items}
-        initialItemCount={items.length}
-        ItemContent={ItemContent}
-      />
+      <div className="flex items-start">
+        {columns.map((column, c) => (
+          <div key={c} className="min-w-0 flex-1">
+            {column.map((item) => (
+              <GalleryItem key={item.id} item={item} />
+            ))}
+          </div>
+        ))}
+      </div>
       <div ref={sentinelRef} className="flex h-16 items-center justify-center">
         {loading && <Spinner />}
       </div>

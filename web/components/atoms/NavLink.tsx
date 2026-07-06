@@ -12,9 +12,7 @@ type NavLinkProps = {
 
 export function NavLink({ href, label, icon }: NavLinkProps) {
   const pathname = usePathname();
-  // Query-string links (e.g. /?type=video) are placeholders for now — never
-  // marked active so they don't clash with "/".
-  const isActive = !href.includes("?") && pathname === href;
+  const isActive = pathname === href;
 
   return (
     <Link

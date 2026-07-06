@@ -13,7 +13,7 @@ const LINKS = [
     ),
   },
   {
-    href: "/?type=image",
+    href: "/images",
     label: "Images",
     icon: (
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -24,7 +24,7 @@ const LINKS = [
     ),
   },
   {
-    href: "/?type=video",
+    href: "/videos",
     label: "Videos",
     icon: (
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">

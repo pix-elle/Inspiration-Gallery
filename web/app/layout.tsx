@@ -14,8 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inspiration",
+  title: {
+    default: "Inspiration",
+    template: "%s · Inspiration",
+  },
   description: "A curated gallery of design inspiration — images and videos.",
+  openGraph: {
+    siteName: "Inspiration",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

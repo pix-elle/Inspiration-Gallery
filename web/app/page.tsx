@@ -1,11 +1,8 @@
-import { Gallery } from "@/components/organisms/Gallery";
-import { getItems } from "@/lib/queries";
+import { GalleryFeed } from "@/components/organisms/GalleryFeed";
 
 // Content only changes when new items are ingested — near-static, edge-cached.
 export const revalidate = 300;
 
-export default async function HomePage() {
-  const { items, nextCursor } = await getItems({ limit: 12 });
-
-  return <Gallery initialItems={items} initialCursor={nextCursor} />;
+export default function HomePage() {
+  return <GalleryFeed />;
 }

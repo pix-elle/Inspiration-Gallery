@@ -9,7 +9,11 @@ import { VideoTile } from "@/components/molecules/VideoTile";
 // so tiles never shift the layout.
 export function GalleryItem({ item }: { item: Item }) {
   return (
-    <Link href={`/item/${item.id}`} className="block px-2 pb-4">
+    <Link
+      href={`/item/${item.id}`}
+      aria-label={item.title ?? `View ${item.type}`}
+      className="block px-2 pb-4"
+    >
       <div
         className="overflow-hidden rounded-lg"
         style={{
