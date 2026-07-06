@@ -36,7 +36,11 @@ export async function getItems({
 
   const hasMore = rows.length > limit;
   const items = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore ? items[items.length - 1].created_at : null;
+  // The driver returns timestamptz as a JS Date; normalize the cursor to ISO
+  // so it survives URL round-trips and casts cleanly back to timestamptz.
+  const nextCursor = hasMore
+    ? new Date(items[items.length - 1].created_at).toISOString()
+    : null;
   return { items, nextCursor };
 }
 

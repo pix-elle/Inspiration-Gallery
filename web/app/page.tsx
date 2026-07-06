@@ -5,7 +5,7 @@ import { getItems } from "@/lib/queries";
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const { items } = await getItems({ limit: 30 });
+  const { items, nextCursor } = await getItems({ limit: 12 });
 
-  return <Gallery initialItems={items} />;
+  return <Gallery initialItems={items} initialCursor={nextCursor} />;
 }
