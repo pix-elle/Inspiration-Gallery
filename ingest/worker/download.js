@@ -70,6 +70,14 @@ export async function downloadToTmp(url, { hintName = "" } = {}) {
   }
 
   const finalType = (res.headers.get("content-type") ?? "").split(";")[0];
+  // A share link that resolves to a web page (dead link, permission denied,
+  // file removed…) must fail here with a readable message — not later as a
+  // cryptic FFmpeg error on an HTML file saved as .mp4.
+  if (finalType === "text/html") {
+    throw new Error(
+      "Le lien renvoie une page web au lieu d'un fichier — vérifie que le lien est correct et que le partage est activé"
+    );
+  }
   const size = Number(res.headers.get("content-length") ?? 0);
   if (size > MAX_BYTES) {
     throw new Error(`Fichier trop lourd (${(size / 1e6).toFixed(0)} Mo, max 500 Mo)`);
