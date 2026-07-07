@@ -1,19 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Item, ItemsPage } from "@/lib/types";
 import { distribute } from "@/lib/masonry";
 import { GalleryItem } from "./GalleryItem";
+import { ItemModal } from "./ItemModal";
 import { Spinner } from "@/components/atoms/Spinner";
 
-// Column count: 2 (mobile) / 3 (tablet+laptop) / 4 (wide).
+// Run a state update inside a native view transition when supported —
+// the browser snapshots before/after and morphs matching
+// view-transition-names. Falls back to an instant swap elsewhere.
+function withViewTransition(update: () => void) {
+  if (!document.startViewTransition) {
+    update();
+    return;
+  }
+  const transition = document.startViewTransition(() => flushSync(update));
+  // A skipped transition (rapid clicks, Esc mid-animation, hidden tab…)
+  // still applies the state update — only the animation is dropped. The
+  // browser rejects these promises; swallow them so they don't surface
+  // as "Transition was skipped" console errors.
+  transition.ready.catch(() => {});
+  transition.finished.catch(() => {});
+}
+
+// Column count: 1 (mobile) / 3 (tablet+laptop) / 4 (wide).
 // SSR default is 4 (desktop-first) so the first paint doesn't reflow on
 // desktop; smaller screens correct once on mount.
 function useColumnCount() {
   const [columns, setColumns] = useState(4);
   useEffect(() => {
     const compute = () =>
-      setColumns(window.innerWidth < 640 ? 2 : window.innerWidth < 1280 ? 3 : 4);
+      setColumns(window.innerWidth < 640 ? 1 : window.innerWidth < 1280 ? 3 : 4);
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
@@ -35,6 +54,52 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
   const loadingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Lightbox: opened from in-memory data so the morph starts on the same
+  // frame as the click. The URL is kept shareable via history.pushState;
+  // a direct load of /item/[id] gets the full server page instead.
+  const [selected, setSelected] = useState<Item | null>(null);
+  const selectedRef = useRef<Item | null>(null);
+  selectedRef.current = selected;
+  // Only the clicked tile carries a view-transition-name: every named element
+  // gets snapshotted ABOVE the real DOM (incl. the backdrop) during the
+  // transition, so naming all tiles makes them float over the modal.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // Guards against double-close (event bubbling, rapid Esc+click…): a second
+  // history.back() would jump past the gallery onto a stale history entry.
+  const closingRef = useRef(false);
+
+  const openItem = useCallback((item: Item) => {
+    closingRef.current = false;
+    // Name the clicked tile synchronously so the "old" snapshot sees it…
+    flushSync(() => setActiveId(item.id));
+    window.history.pushState({ itemModal: true }, "", `/item/${item.id}`);
+    // …then morph: in the "new" snapshot the modal owns the name.
+    withViewTransition(() => setSelected(item));
+  }, []);
+
+  const closeItem = useCallback(() => {
+    if (closingRef.current) return;
+    // Go back so the browser history stays consistent; popstate does the
+    // actual close (also covers the hardware/browser back button).
+    if (window.history.state?.itemModal) {
+      closingRef.current = true;
+      window.history.back();
+    } else {
+      withViewTransition(() => setSelected(null));
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      closingRef.current = false;
+      if (selectedRef.current) {
+        withViewTransition(() => setSelected(null));
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   // Server and client run the same deterministic distribution, so SSR HTML
   // matches hydration exactly — no layout shift. Appending pages re-runs it
@@ -91,7 +156,16 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
         {columns.map((column, c) => (
           <div key={c} className="min-w-0 flex-1">
             {column.map((item) => (
-              <GalleryItem key={item.id} item={item} />
+              <GalleryItem
+                key={item.id}
+                item={item}
+                onOpen={openItem}
+                transitionName={
+                  activeId === item.id && selected?.id !== item.id
+                    ? `item-${item.id}`
+                    : "none"
+                }
+              />
             ))}
           </div>
         ))}
@@ -99,6 +173,7 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
       <div ref={sentinelRef} className="flex h-16 items-center justify-center">
         {loading && <Spinner />}
       </div>
+      {selected && <ItemModal item={selected} onClose={closeItem} />}
     </div>
   );
 }

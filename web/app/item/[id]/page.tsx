@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getItem } from "@/lib/queries";
+import { bestWidth } from "@/lib/media";
 import { Tag } from "@/components/atoms/Tag";
+import { IconArrowLeft } from "@/components/atoms/icons/IconArrowLeft";
+
+// ISR: pages are generated on demand, then cached — so Link prefetch can pull
+// the full page while the tile is still in the viewport, making the click
+// (and the morph) start instantly instead of waiting on a DB round-trip.
+export const revalidate = 300;
+export async function generateStaticParams() {
+  return [];
+}
 
 type Props = { params: Promise<{ id: string }> };
-
-// Largest variant the ingest CLI actually generated (it never upscales;
-// if no standard width fits, it emitted one at the original width).
-const VARIANT_WIDTHS = [2000, 1200, 800, 400];
-function bestWidth(itemWidth: number): number {
-  return VARIANT_WIDTHS.find((w) => w <= itemWidth) ?? itemWidth;
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -35,9 +38,10 @@ export default async function ItemPage({ params }: Props) {
     <div className="mx-auto max-w-4xl">
       <Link
         href="/"
-        className="mb-4 inline-block text-sm text-foreground/60 hover:text-foreground"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-foreground/60 hover:text-foreground"
       >
-        ← Back to gallery
+        <IconArrowLeft className="h-4 w-4" />
+        Back to gallery
       </Link>
 
       <div
