@@ -51,7 +51,7 @@ mode d'emploi + la base `Inspiration — Inbox`). Pour que le robot tourne :
 
 - [ ] Pour tester **en local avant** (sans attendre R2) : mettre `NOTION_TOKEN` et
       `NOTION_DATABASE_ID=8824aaa99a66446e929b684b86057a02` dans `ingest/.env`,
-      créer une ligne test dans Notion, cocher « Prêt à publier », puis
+      créer une ligne test dans Notion, passer son Statut sur « À poster », puis
       `cd ingest && node worker/sync-notion.js`
 - [ ] Une fois les secrets en place, le workflow **Notion ingest** tourne toutes
       les 15 min (ou bouton "Run workflow" dans l'onglet Actions pour forcer).

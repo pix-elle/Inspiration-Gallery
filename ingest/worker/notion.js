@@ -35,15 +35,13 @@ async function notionPatch(path, body) {
   return res.json();
 }
 
-// Rows ready for the robot: checked, and not already published or in flight.
+// The Statut column drives the whole lifecycle: the robot only picks up
+// rows explicitly set to "À poster" (retry = set it back to "À poster").
 export async function fetchQueue() {
   const data = await notionFetch(`/databases/${env.NOTION_DATABASE_ID}/query`, {
     filter: {
-      and: [
-        { property: "Prêt à publier", checkbox: { equals: true } },
-        { property: "Statut", select: { does_not_equal: "✅ Publié" } },
-        { property: "Statut", select: { does_not_equal: "Traitement" } },
-      ],
+      property: "Statut",
+      select: { equals: "À poster" },
     },
     page_size: 10, // per run — keeps each cron run short; the next run continues
   });
