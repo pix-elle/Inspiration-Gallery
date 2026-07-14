@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Item, ItemsPage } from "@/lib/types";
 import { distribute } from "@/lib/masonry";
+import { bestWidth } from "@/lib/media";
 import { GalleryItem } from "./GalleryItem";
 import { ItemModal } from "./ItemModal";
 import { Spinner } from "@/components/atoms/Spinner";
@@ -11,10 +12,10 @@ import { Spinner } from "@/components/atoms/Spinner";
 // Run a state update inside a native view transition when supported —
 // the browser snapshots before/after and morphs matching
 // view-transition-names. Falls back to an instant swap elsewhere.
-function withViewTransition(update: () => void) {
+function withViewTransition(update: () => void): ViewTransition | null {
   if (!document.startViewTransition) {
     update();
-    return;
+    return null;
   }
   const transition = document.startViewTransition(() => flushSync(update));
   // A skipped transition (rapid clicks, Esc mid-animation, hidden tab…)
@@ -23,6 +24,7 @@ function withViewTransition(update: () => void) {
   // as "Transition was skipped" console errors.
   transition.ready.catch(() => {});
   transition.finished.catch(() => {});
+  return transition;
 }
 
 // Column count: 1 (mobile) / 3 (tablet+laptop) / 4 (wide).
@@ -101,6 +103,59 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // While navigating prev/next, the modal media takes a fixed transition
+  // name: "lb-out" before the swap, "lb-in" after. DISTINCT names on
+  // purpose — pairing them would make the browser morph the frame between
+  // the two aspect ratios (a scale effect); unpaired, each media keeps its
+  // own size and only slides. Per-item names stay for the open/close morph.
+  const [navName, setNavName] = useState<"lb-out" | "lb-in" | null>(null);
+
+  // Prev/next inside the lightbox. replaceState (not push): the back button
+  // should close the lightbox, not step back through every viewed item.
+  const selectedIndex = selected
+    ? items.findIndex((i) => i.id === selected.id)
+    : -1;
+  const prevItem = selectedIndex > 0 ? items[selectedIndex - 1] : null;
+  const nextItem =
+    selectedIndex >= 0 && selectedIndex < items.length - 1
+      ? items[selectedIndex + 1]
+      : null;
+
+  const navigateTo = useCallback((target: Item, dir: "prev" | "next") => {
+    window.history.replaceState({ itemModal: true }, "", `/item/${target.id}`);
+    // 1. Rename the current media "lb-out" BEFORE the snapshot; the new one
+    //    renders as "lb-in" inside the transition. 2. The html attribute
+    //    tells the CSS which way to slide. Everything is cleared once the
+    //    transition ends, restoring the per-item name for the close morph.
+    flushSync(() => setNavName("lb-out"));
+    document.documentElement.dataset.navDir = dir;
+    const transition = withViewTransition(() => {
+      setActiveId(target.id); // the close-morph must return to the new tile
+      setSelected(target);
+      setNavName("lb-in");
+    });
+    const clear = () => {
+      setNavName(null);
+      delete document.documentElement.dataset.navDir;
+    };
+    if (transition) transition.finished.catch(() => {}).finally(clear);
+    else clear();
+  }, []);
+
+  // Warm the neighbours' media so prev/next feels instant.
+  useEffect(() => {
+    for (const neighbour of [prevItem, nextItem]) {
+      if (!neighbour) continue;
+      const url =
+        neighbour.type === "video"
+          ? neighbour.poster_url
+          : neighbour.image_base
+            ? `${neighbour.image_base}/${bestWidth(neighbour.width)}.avif`
+            : null;
+      if (url) new window.Image().src = url;
+    }
+  }, [prevItem, nextItem]);
+
   // Server and client run the same deterministic distribution, so SSR HTML
   // matches hydration exactly — no layout shift. Appending pages re-runs it
   // with the same prefix, so existing tiles keep their positions.
@@ -126,6 +181,12 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
       setLoading(false);
     }
   }, [cursor, type, tag]);
+
+  // Browsing the lightbox near the end of the loaded list pulls the next
+  // page in the background, so "next" rarely hits a wall.
+  useEffect(() => {
+    if (selected && selectedIndex >= items.length - 2) loadMore();
+  }, [selected, selectedIndex, items.length, loadMore]);
 
   // Sentinel under the grid triggers the next page before the user reaches it.
   useEffect(() => {
@@ -173,7 +234,15 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
       <div ref={sentinelRef} className="flex h-16 items-center justify-center">
         {loading && <Spinner />}
       </div>
-      {selected && <ItemModal item={selected} onClose={closeItem} />}
+      {selected && (
+        <ItemModal
+          item={selected}
+          mediaTransitionName={navName ?? `item-${selected.id}`}
+          onClose={closeItem}
+          onPrev={prevItem ? () => navigateTo(prevItem, "prev") : undefined}
+          onNext={nextItem ? () => navigateTo(nextItem, "next") : undefined}
+        />
+      )}
     </div>
   );
 }

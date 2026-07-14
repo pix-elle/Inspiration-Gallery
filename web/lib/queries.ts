@@ -48,3 +48,11 @@ export async function getItem(id: string): Promise<Item | null> {
   const rows = (await sql`select * from items where id = ${id}`) as Item[];
   return rows[0] ?? null;
 }
+
+export async function addSubscriber(email: string, source: string | null) {
+  await sql`
+    insert into subscribers (email, source)
+    values (${email}, ${source})
+    on conflict (email) do nothing
+  `;
+}
