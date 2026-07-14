@@ -1,26 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { AppShell } from "@/components/templates/AppShell";
+import { siteConfig } from "@/site.config";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "Inspiration",
-    template: "%s · Inspiration",
+    default: siteConfig.name,
+    template: `%s · ${siteConfig.name}`,
   },
-  description: "A curated gallery of design inspiration — images and videos.",
+  description: siteConfig.description,
   openGraph: {
-    siteName: "Inspiration",
+    siteName: siteConfig.name,
     type: "website",
   },
 };
@@ -33,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <AppShell>{children}</AppShell>

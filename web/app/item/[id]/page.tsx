@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getItem } from "@/lib/queries";
 import { bestWidth } from "@/lib/media";
 import { Tag } from "@/components/atoms/Tag";
+import { siteConfig } from "@/site.config";
 
 // ISR: pages are generated on demand, then cached — direct loads (shared
 // links, social crawlers) stay fast without a DB round-trip per request.
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage =
     item.poster_url ?? (item.image_base ? `${item.image_base}/1200.webp` : null);
   return {
-    title: item.title ?? "Inspiration",
+    title: item.title ?? siteConfig.name,
     description: item.description ?? undefined,
     openGraph: ogImage ? { images: [ogImage] } : undefined,
   };

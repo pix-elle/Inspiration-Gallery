@@ -8,8 +8,6 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,7 +20,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Tailwind v4 dropped the pointer cursor on buttons — restore it. */
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 /* Shared-element morph (gallery tile ↔ lightbox media).
@@ -30,6 +33,51 @@ body {
 ::view-transition-group(*) {
   animation-duration: 350ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Prev/next inside the lightbox: carousel-style lateral flow — the outgoing
+   media travels fully off one side while the incoming one flows in from the
+   other. The two medias carry DISTINCT names (lb-out / lb-in) so they never
+   pair: no frame-size morphing between aspect ratios (no scale effect),
+   pure sliding. html[data-nav-dir] gives the direction — open/close keep
+   the per-item name and their default morph. */
+html[data-nav-dir]::view-transition-old(lb-out),
+html[data-nav-dir]::view-transition-new(lb-in) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+}
+html[data-nav-dir="next"]::view-transition-old(lb-out) {
+  animation-name: lb-out-left;
+}
+html[data-nav-dir="next"]::view-transition-new(lb-in) {
+  animation-name: lb-in-right;
+}
+html[data-nav-dir="prev"]::view-transition-old(lb-out) {
+  animation-name: lb-out-right;
+}
+html[data-nav-dir="prev"]::view-transition-new(lb-in) {
+  animation-name: lb-in-left;
+}
+@keyframes lb-out-left {
+  to {
+    transform: translateX(-100vw);
+  }
+}
+@keyframes lb-in-right {
+  from {
+    transform: translateX(100vw);
+  }
+}
+@keyframes lb-out-right {
+  to {
+    transform: translateX(100vw);
+  }
+}
+@keyframes lb-in-left {
+  from {
+    transform: translateX(-100vw);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
