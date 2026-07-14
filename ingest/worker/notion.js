@@ -38,10 +38,20 @@ async function notionPatch(path, body) {
 // The Statut column drives the whole lifecycle: the robot only picks up
 // rows explicitly set to "À poster" (retry = set it back to "À poster").
 export async function fetchQueue() {
+  return queueFor("À poster");
+}
+
+// Unpublish queue: rows set to "À retirer". The robot deletes the item
+// (via the "ID item" it wrote back at publish time) and marks "🗑 Retiré".
+export async function fetchRetireQueue() {
+  return queueFor("À retirer");
+}
+
+async function queueFor(status) {
   const data = await notionFetch(`/databases/${env.NOTION_DATABASE_ID}/query`, {
     filter: {
       property: "Statut",
-      select: { equals: "À poster" },
+      select: { equals: status },
     },
     page_size: 10, // per run — keeps each cron run short; the next run continues
   });
@@ -65,6 +75,7 @@ function parseRow(page) {
     creator: plain(p["Créateur"]?.rich_text),
     sourceUrl: p["Source"]?.url ?? null,
     description: plain(p["Description"]?.rich_text),
+    itemId: plain(p["ID item"]?.rich_text),
   };
 }
 

@@ -16,9 +16,9 @@ import { env, useR2 } from "../lib/env.js";
 import { processImage } from "../lib/image.js";
 import { processVideo } from "../lib/video.js";
 import { dominantColor, blurDataUrl } from "../lib/placeholder.js";
-import { insertItem } from "../lib/db.js";
+import { insertItem, deleteItem } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
-import { fetchQueue, setStatus } from "./notion.js";
+import { fetchQueue, fetchRetireQueue, setStatus } from "./notion.js";
 import { resolveDownloadUrl, downloadToTmp } from "./download.js";
 
 const VIDEO_EXT = new Set([".mov", ".mp4", ".webm"]);
@@ -130,5 +130,44 @@ for (const row of queue) {
   }
 }
 
-console.log(`\n✓ terminé — ${ok} publié(s), ${failed} en erreur`);
-process.exit(failed > 0 && ok === 0 && queue.length > 0 ? 1 : 0);
+// Unpublish pass: rows set to "À retirer". Only the DB row is removed —
+// the gallery stops showing the item immediately; media files stay in
+// storage (cheap, and ids are never reused).
+const retireQueue = await fetchRetireQueue();
+if (retireQueue.length > 0) {
+  console.log(`\n→ ${retireQueue.length} item(s) à retirer`);
+}
+let retired = 0;
+
+for (const row of retireQueue) {
+  console.log(`\n• retrait "${row.title ?? "(sans titre)"}" (${row.pageId})`);
+  try {
+    if (!row.itemId) {
+      throw new Error(
+        'Pas d\'"ID item" sur cette ligne — elle n\'a jamais été publiée'
+      );
+    }
+    const existed = await deleteItem(row.itemId);
+    if (!existed) {
+      throw new Error(`Item ${row.itemId} introuvable en base (déjà retiré ?)`);
+    }
+    await setStatus(row.pageId, "🗑 Retiré", { error: "" });
+    console.log(`  ✓ retiré — item ${row.itemId}`);
+    retired++;
+  } catch (err) {
+    failed++;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`  ✗ ${message}`);
+    try {
+      await setStatus(row.pageId, "❌ Erreur", { error: message });
+    } catch (statusErr) {
+      console.error(`  (impossible de reporter l'erreur dans Notion: ${statusErr})`);
+    }
+  }
+}
+
+console.log(
+  `\n✓ terminé — ${ok} publié(s), ${retired} retiré(s), ${failed} en erreur`
+);
+const attempted = queue.length + retireQueue.length;
+process.exit(failed > 0 && ok === 0 && retired === 0 && attempted > 0 ? 1 : 0);
