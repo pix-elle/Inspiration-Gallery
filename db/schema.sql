@@ -57,6 +57,18 @@ create unique index items_import_key_idx on items (import_key) where import_key 
 create index items_status_created_idx on items (status, created_at desc);
 create index items_brand_idx on items (brand_id);
 
+-- Liens de connexion à usage unique du back-office. Seul le hash du jeton
+-- est stocké : une copie de la base ne permet donc pas de fabriquer une
+-- connexion. used_at est ce qui rend le lien non rejouable.
+create table auth_tokens (
+  token_hash text primary key,
+  email      text not null,
+  expires_at timestamptz not null,
+  used_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+create index auth_tokens_expires_idx on auth_tokens (expires_at);
+
 -- Les inscrits à la newsletter (email unique, source = 'modal' | 'button').
 create table subscribers (
   email      text primary key,
@@ -93,3 +105,13 @@ alter table items add constraint items_project_type_check
   check (project_type is null or project_type in ('popup','store'));
 create index if not exists items_status_created_idx on items (status, created_at desc);
 create index if not exists items_brand_idx on items (brand_id);
+
+-- 2026-08-22 — connexion par lien magique.
+create table if not exists auth_tokens (
+  token_hash text primary key,
+  email      text not null,
+  expires_at timestamptz not null,
+  used_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists auth_tokens_expires_idx on auth_tokens (expires_at);

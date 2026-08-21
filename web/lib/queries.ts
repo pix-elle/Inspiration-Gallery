@@ -64,3 +64,38 @@ export async function addSubscriber(email: string, source: string | null) {
     on conflict (email) do nothing
   `;
 }
+
+// --- back-office ----------------------------------------------------------
+
+// Magic links: single-use, short-lived, and only the hash is stored.
+export async function saveMagicToken(
+  hash: string,
+  email: string,
+  expiresAt: Date
+) {
+  await sql`
+    insert into auth_tokens (token_hash, email, expires_at)
+    values (${hash}, ${email}, ${expiresAt.toISOString()})
+  `;
+}
+
+// Marks the token used and returns the address it was issued to, or null if
+// it never existed, already expired, or was already consumed. The update is
+// what makes it single-use: a second click on the same link finds used_at
+// already set and gets nothing back.
+export async function consumeMagicToken(hash: string): Promise<string | null> {
+  const rows = (await sql`
+    update auth_tokens
+       set used_at = now()
+     where token_hash = ${hash}
+       and used_at is null
+       and expires_at > now()
+    returning email
+  `) as { email: string }[];
+  return rows[0]?.email ?? null;
+}
+
+// Housekeeping, called on each link request: the table is a queue, not a log.
+export async function purgeExpiredTokens() {
+  await sql`delete from auth_tokens where expires_at < now() - interval '1 day'`;
+}
