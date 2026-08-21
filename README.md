@@ -1,4 +1,4 @@
-# Inspiration Gallery (Motioon)
+# Inspiration Gallery (Nexus Studio)
 
 Galerie d'inspiration design — images et vidéos — alimentée depuis Notion.
 

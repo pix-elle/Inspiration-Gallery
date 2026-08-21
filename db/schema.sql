@@ -1,4 +1,4 @@
--- Schéma complet de la base Motioon.
+-- Schéma complet de la base Nexus Studio.
 -- Pour initialiser une nouvelle base Neon : ouvre le SQL Editor du projet,
 -- colle tout ce fichier, clique "Run". C'est tout.
 -- (Extrait de la base de production le 2026-07-14.)
