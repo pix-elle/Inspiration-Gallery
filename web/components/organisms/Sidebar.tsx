@@ -70,6 +70,7 @@ export function Sidebar({ settings }: { settings: Settings }) {
             </a>
           )}
         </div>
+        <hr className="border-foreground/10" />
         <div className="flex items-center px-2">
           <ThemeToggle />
         </div>
