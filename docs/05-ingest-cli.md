@@ -361,10 +361,56 @@ node ingest.js ./exports/pricing-page.png \
   --title "Pricing layout" --tags landing,pricing --creator "Linear"
 ```
 
+---
+
+## Import en masse depuis un dossier Google Drive
+
+`worker/sync-drive.js` est le pendant « one-shot » du robot Notion : il prend un
+dossier Drive partagé et fait passer **chaque vidéo/image** par exactement le même
+pipeline (compression → stockage → ligne en base).
+
+```bash
+cd ingest
+
+# 1. Lister sans rien importer (aucun accès base ni R2 requis)
+node worker/sync-drive.js --dry-run "https://drive.google.com/drive/folders/<id>"
+
+# 2. Importer pour de vrai, avec des métadonnées communes
+node worker/sync-drive.js "https://drive.google.com/drive/folders/<id>" \
+  --tags motion,3d --creator "Alessia"
+
+# On peut aussi passer des liens de fichiers un par un
+node worker/sync-drive.js "https://drive.google.com/file/d/<id>/view"
+```
+
+**Le dossier doit être partagé en « Toute personne disposant du lien ».** Drive
+n'expose aucune API de listing anonyme : le script lit le blob de données de la
+page du dossier. C'est un format privé de Google qui peut changer — si le listing
+ressort vide, on passe la liste à la main :
+
+```bash
+# fichiers.json : [{ "id": "<drive file id>", "name": "clip.mp4" }, …]
+node worker/sync-drive.js --manifest fichiers.json
+```
+
+Chaque ligne créée porte `import_key = "drive:<id>"` : **relancer le script est
+sans risque**, les fichiers déjà importés sont sautés. Cette clé est technique et
+n'est jamais affichée — le lien Drive ne fuite pas dans `source_url`, qui est
+rendu publiquement sur la page de l'item.
+
+Le titre est déduit du nom de fichier (`gradient-flow_v2.mp4` → « Gradient flow v2 »).
+
+Le script refuse de tourner en **stockage local** : `web/public/media/` est
+gitignoré, les fichiers n'arriveraient jamais sur Vercel. R2 est donc obligatoire
+(voir `TODO-lucas.md`).
+
+---
+
 ## Nice upgrades later
 - **Batch mode:** `node ingest.js ./folder --tags ...` loops a directory.
 - **Dry run:** `--dry` to compress + report sizes without uploading.
-- **Idempotency:** skip if an item with the same source hash already exists.
+- ~~**Idempotency:** skip if an item with the same source hash already exists.~~
+  → fait pour l'import Drive via `import_key`.
 - **Re-encode command:** regenerate variants for an existing id if you change specs.
 - **Sidecar metadata:** read a `clip.json` next to each file so you don't retype flags.
 ```

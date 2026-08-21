@@ -37,6 +37,19 @@ npm install
 npm run dev                  # → http://localhost:3000
 ```
 
+## Importer un dossier Google Drive (en masse)
+
+Pour un lot de vidéos déjà rassemblées dans un dossier Drive partagé
+(« Toute personne disposant du lien »), sans passer par Notion ligne par ligne :
+
+```bash
+cd ingest
+node worker/sync-drive.js --dry-run "<lien du dossier>"   # liste, n'importe rien
+node worker/sync-drive.js "<lien du dossier>" --tags motion --creator "Alessia"
+```
+
+Relancer la commande ne crée pas de doublons. Détails : `docs/05-ingest-cli.md`.
+
 ## Publier du contenu
 
 Tout se passe dans la base Notion « Inspiration — Inbox » : remplir une

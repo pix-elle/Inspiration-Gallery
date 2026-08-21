@@ -22,11 +22,13 @@ create table items (
   image_base     text,                        -- base CDN des variantes image
   video_url      text,
   video_av1_url  text,
+  import_key     text,                        -- ex. 'drive:<id>' — anti-doublon, jamais affiché
   created_at     timestamptz not null default now()
 );
 
 create index items_created_at_idx on items (created_at desc);
 create index items_tags_idx on items using gin (tags);
+create unique index items_import_key_idx on items (import_key) where import_key is not null;
 
 -- Les inscrits à la newsletter (email unique, source = 'modal' | 'button').
 create table subscribers (
@@ -34,3 +36,13 @@ create table subscribers (
   source     text,
   created_at timestamptz not null default now()
 );
+
+-- ============================================================
+--  Migrations — à jouer sur une base DÉJÀ existante.
+--  Sans effet sur une base fraîchement créée avec ce fichier.
+-- ============================================================
+
+-- 2026-08-21 — clé d'import (anti-doublon des imports en masse, ex. Drive).
+alter table items add column if not exists import_key text;
+create unique index if not exists items_import_key_idx
+  on items (import_key) where import_key is not null;

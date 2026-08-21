@@ -23,11 +23,22 @@ export async function insertItem(row) {
     insert into items
       (id, type, title, description, tags, category, creator, source_url,
        width, height, dominant_color, blur_data_url,
-       poster_url, image_base, video_url, video_av1_url)
+       poster_url, image_base, video_url, video_av1_url, import_key)
     values
       (${row.id}, ${row.type}, ${row.title}, ${row.description}, ${row.tags},
        ${row.category}, ${row.creator}, ${row.sourceUrl},
        ${row.width}, ${row.height}, ${row.dominantColor}, ${row.blurDataUrl},
-       ${row.posterUrl}, ${row.imageBase}, ${row.videoUrl}, ${row.videoAv1Url})
+       ${row.posterUrl}, ${row.imageBase}, ${row.videoUrl}, ${row.videoAv1Url},
+       ${row.importKey ?? null})
   `;
+}
+
+// Which of these import keys are already in the gallery? Lets a bulk import
+// be re-run safely — already-published files are skipped, not duplicated.
+export async function existingImportKeys(keys) {
+  if (keys.length === 0) return new Set();
+  const rows = await sql`
+    select import_key from items where import_key = any(${keys})
+  `;
+  return new Set(rows.map((r) => r.import_key));
 }
