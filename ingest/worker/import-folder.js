@@ -168,7 +168,10 @@ console.log(`→ ${todo.length} à importer — stockage : ${storageMode()}`);
 
 // A folder name is a tag; a camera filename is not a title.
 function metaFor(f) {
-  const stem = basename(f.relative, f.ext);
+  // f.ext is lowercased for matching, so it can't be handed to basename() as
+  // a suffix — "gentle woman.MOV" wouldn't lose its ".MOV".
+  const name = basename(f.relative);
+  const stem = name.slice(0, name.length - extname(name).length);
   const pretty = (s) => s.replace(/[_-]+/g, " ").trim().replace(/^./, (c) => c.toUpperCase());
   const title = CAMERA_NAME.test(stem) ? pretty(f.folder) : pretty(stem);
   const folderTag = f.folder.toLowerCase().replace(/[_-]+/g, " ").trim();

@@ -5,4 +5,9 @@ node_modules/
 !.env.example
 .DS_Store
 web/public/media/
+# Sources brutes déposées pour un import (2 Go de .MOV et .HEIC) : elles
+# transitent par ingest/worker/import-folder.js vers R2, jamais par git.
+Inspiration vrac/
+*.MOV
+*.HEIC
 web/.next/
