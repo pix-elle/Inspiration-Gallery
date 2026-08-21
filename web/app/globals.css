@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Light is the default the server renders; the blocks below override it. */
+  --theme-icon-moon: block;
+  --theme-icon-sun: none;
+  --theme-knob-x: 0rem;
 }
 
 @theme inline {
@@ -13,17 +18,27 @@
 /* Three states, not two: no data-theme attribute means "follow the system",
    which is the default until the sidebar toggle is used. The :not() guard is
    what lets an explicit "light" choice win over a dark OS setting — without
-   it, the media query would keep overriding the user. */
+   it, the media query would keep overriding the user.
+
+   Everything "dark" means lives in the two blocks below, colours and toggle
+   alike, so the four combinations of (OS preference × explicit choice) are
+   spelled out once instead of once per property. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --theme-icon-moon: none;
+    --theme-icon-sun: block;
+    --theme-knob-x: 1rem;
   }
 }
 
 :root[data-theme="dark"] {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --theme-icon-moon: none;
+  --theme-icon-sun: block;
+  --theme-knob-x: 1rem;
 }
 
 /* Tells the browser to render its own widgets (scrollbars, form controls) to
@@ -35,32 +50,17 @@
   color-scheme: light;
 }
 
-/* Which icon the theme toggle shows is decided here rather than in React.
-   The server can't know the visitor's theme, so a JS-driven icon would paint
-   the wrong one and swap it after hydration. Both are rendered; these four
-   rules cover the four combinations of (OS preference × explicit choice).
-   The :not() guard is what makes an explicit "light" survive a dark OS. */
+/* The switch reads its own state from CSS rather than from React: the server
+   can't know the visitor's theme, so a JS-driven knob would paint on the
+   wrong side and jump after hydration. */
+.theme-switch-knob {
+  transform: translateX(var(--theme-knob-x));
+}
 .theme-icon-moon {
-  display: block;
+  display: var(--theme-icon-moon);
 }
 .theme-icon-sun {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .theme-icon-moon {
-    display: none;
-  }
-  :root:not([data-theme="light"]) .theme-icon-sun {
-    display: block;
-  }
-}
-
-:root[data-theme="dark"] .theme-icon-moon {
-  display: none;
-}
-:root[data-theme="dark"] .theme-icon-sun {
-  display: block;
+  display: var(--theme-icon-sun);
 }
 
 body {
