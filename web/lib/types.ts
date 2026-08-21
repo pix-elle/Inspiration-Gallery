@@ -16,6 +16,28 @@ export type Item = {
   video_url: string | null;
   video_av1_url: string | null;
   created_at: string;
+
+  // Admin-side columns. The public gallery only ever sees status
+  // "published", but the type is shared with the back-office.
+  status: ItemStatus;
+  error: string | null;
+  project_type: ProjectType | null;
+  brand_id: string | null;
+  source_key: string | null; // the untouched original kept on R2
+  updated_at: string;
+};
+
+// processing → the Actions runner is encoding it; failed carries `error`.
+// unpublished is a reversible hide, distinct from deleting the row.
+export type ItemStatus = "processing" | "published" | "unpublished" | "failed";
+
+export type ProjectType = "popup" | "store";
+
+export type Brand = {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
 };
 
 export type ItemsPage = {

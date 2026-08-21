@@ -25,9 +25,13 @@ export async function getItems({
   type = null,
 }: GetItemsOptions = {}): Promise<ItemsPage> {
   // Fetch one extra row to know whether there is a next page.
+  // status is not a filter the caller may relax: everything reachable from
+  // the public site goes through here, so a draft or an unpublished item can
+  // never leak by passing an unexpected argument.
   const rows = (await sql`
     select * from items
-    where (${cursor}::timestamptz is null or created_at < ${cursor})
+    where status = 'published'
+      and (${cursor}::timestamptz is null or created_at < ${cursor})
       and (${tag}::text is null or ${tag} = any(tags))
       and (${type}::text is null or type = ${type})
     order by created_at desc
@@ -44,8 +48,12 @@ export async function getItems({
   return { items, nextCursor };
 }
 
+// Same rule for the single-item page: an unpublished item must 404 rather
+// than stay reachable by anyone who kept its URL.
 export async function getItem(id: string): Promise<Item | null> {
-  const rows = (await sql`select * from items where id = ${id}`) as Item[];
+  const rows = (await sql`
+    select * from items where id = ${id} and status = 'published'
+  `) as Item[];
   return rows[0] ?? null;
 }
 
