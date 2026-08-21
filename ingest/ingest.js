@@ -2,13 +2,9 @@
 import { Command } from "commander";
 import { nanoid } from "nanoid";
 import { extname, basename } from "node:path";
-import { processImage } from "./lib/image.js";
-import { processVideo } from "./lib/video.js";
-import { dominantColor, blurDataUrl } from "./lib/placeholder.js";
+import { processMedia, isVideoExt } from "./lib/pipeline.js";
 import { insertItem } from "./lib/db.js";
 import { storageMode } from "./lib/storage.js";
-
-const VIDEO_EXT = new Set([".mov", ".mp4", ".webm", ".m4v"]);
 
 const program = new Command();
 program
@@ -25,39 +21,13 @@ program
 const file = program.args[0];
 const opts = program.opts();
 const id = nanoid(10);
-const isVideo = VIDEO_EXT.has(extname(file).toLowerCase());
+const ext = extname(file).toLowerCase();
+const isVideo = isVideoExt(ext);
 
 console.log(`→ ingesting ${isVideo ? "video" : "image"} "${basename(file)}" as ${id}`);
 console.log(`  storage: ${storageMode()}`);
 
-let media;
-if (isVideo) {
-  const v = await processVideo(file, id);
-  media = {
-    type: "video",
-    width: v.width,
-    height: v.height,
-    dominantColor: await dominantColor(v.posterPng),
-    blurDataUrl: await blurDataUrl(v.posterPng),
-    posterUrl: v.posterUrl,
-    videoUrl: v.videoUrl,
-    imageBase: null,
-    videoAv1Url: null,
-  };
-} else {
-  const img = await processImage(file, id);
-  media = {
-    type: "image",
-    width: img.width,
-    height: img.height,
-    dominantColor: await dominantColor(file),
-    blurDataUrl: await blurDataUrl(file),
-    imageBase: img.imageBase,
-    posterUrl: null,
-    videoUrl: null,
-    videoAv1Url: null,
-  };
-}
+const media = await processMedia(file, id, ext);
 
 await insertItem({
   id,

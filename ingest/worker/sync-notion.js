@@ -13,15 +13,11 @@
 import { unlink } from "node:fs/promises";
 import { nanoid } from "nanoid";
 import { env, useR2 } from "../lib/env.js";
-import { processImage } from "../lib/image.js";
-import { processVideo } from "../lib/video.js";
-import { dominantColor, blurDataUrl } from "../lib/placeholder.js";
+import { processMedia, isVideoExt } from "../lib/pipeline.js";
 import { insertItem, deleteItem } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
 import { fetchQueue, fetchRetireQueue, setStatus } from "./notion.js";
 import { resolveDownloadUrl, downloadToTmp } from "./download.js";
-
-const VIDEO_EXT = new Set([".mov", ".mp4", ".webm"]);
 
 if (!env.NOTION_TOKEN || !env.NOTION_DATABASE_ID) {
   console.error("NOTION_TOKEN / NOTION_DATABASE_ID manquants (ingest/.env)");
@@ -61,39 +57,11 @@ for (const row of queue) {
       hintName: row.fileName ?? "",
     });
     tmpPath = path;
-    const isVideo = VIDEO_EXT.has(ext);
-    console.log(`  téléchargé (${ext}, ${isVideo ? "vidéo" : "image"})`);
+    console.log(`  téléchargé (${ext}, ${isVideoExt(ext) ? "vidéo" : "image"})`);
 
     // 3. Same pipeline as the CLI.
     const id = nanoid(10);
-    let media;
-    if (isVideo) {
-      const v = await processVideo(path, id);
-      media = {
-        type: "video",
-        width: v.width,
-        height: v.height,
-        dominantColor: await dominantColor(v.posterPng),
-        blurDataUrl: await blurDataUrl(v.posterPng),
-        posterUrl: v.posterUrl,
-        videoUrl: v.videoUrl,
-        imageBase: null,
-        videoAv1Url: null,
-      };
-    } else {
-      const img = await processImage(path, id);
-      media = {
-        type: "image",
-        width: img.width,
-        height: img.height,
-        dominantColor: await dominantColor(path),
-        blurDataUrl: await blurDataUrl(path),
-        imageBase: img.imageBase,
-        posterUrl: null,
-        videoUrl: null,
-        videoAv1Url: null,
-      };
-    }
+    const media = await processMedia(path, id, ext);
 
     await insertItem({
       id,

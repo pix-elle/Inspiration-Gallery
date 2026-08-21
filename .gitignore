@@ -1,6 +1,8 @@
 node_modules/
-.env
-.env.local
+# Toute variante d'env — .env.bak, .env.local.old, .env.save… : un fichier de
+# secrets sauvegardé à la main ne doit jamais pouvoir être commité par accident.
+.env*
+!.env.example
 .DS_Store
 web/public/media/
 web/.next/

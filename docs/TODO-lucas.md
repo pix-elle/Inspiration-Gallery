@@ -2,30 +2,39 @@
 
 Things only you can do — account setup, credentials, DNS. Check them off as you go.
 
-## Cloudflare R2 (needed before real media goes live)
+## Cloudflare R2 — ✅ fait (bucket `alessia-inspiration`)
 
-- [ ] Create a Cloudflare account (or log in) → https://dash.cloudflare.com
-- [ ] R2 → **Create bucket** — name: `inspiration-media` (region: automatic)
-- [ ] R2 → **Manage R2 API Tokens** → Create API token
+> Deux pièges rencontrés au montage, à connaître si tu recrées tout un jour :
+> le nom de bucket ci-dessous était un **exemple** (le vrai est
+> `alessia-inspiration`), et l'endpoint `https://<id>.eu.r2.cloudflarestorage.com`
+> ne voit *que* les buckets créés en juridiction EU — pour un bucket standard
+> il faut `https://<id>.r2.cloudflarestorage.com`, sans le `.eu`.
+
+- [x] Create a Cloudflare account (or log in) → https://dash.cloudflare.com
+- [x] R2 → **Create bucket** — name: `inspiration-media` (region: automatic)
+- [x] R2 → **Manage R2 API Tokens** → Create API token
       - Permission: **Object Read & Write**, scoped to the `inspiration-media` bucket
       - Save the **Access Key ID** and **Secret Access Key** (shown once)
-- [ ] Enable public access for the bucket:
+- [x] Enable public access for the bucket:
       - Easiest: bucket → Settings → **R2.dev subdomain** → Allow access
         (gives you a `https://pub-xxxx.r2.dev` URL — fine for development)
       - Later/production: connect a **custom domain** (e.g. `cdn.yoursite.com`)
         on the bucket so media is served through Cloudflare's CDN with caching
-- [ ] Put the values in `web/.env.local` (and later in `ingest/.env`):
+- [x] Put the values in `web/.env.local` (and later in `ingest/.env`):
 
 ```bash
-S3_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
-S3_BUCKET=inspiration-media
+S3_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com   # sans .eu
+S3_BUCKET=alessia-inspiration
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
 CDN_BASE_URL=https://pub-xxxx.r2.dev        # or https://cdn.yoursite.com
 ```
 
-- [ ] Tell Claude it's done → the ingest CLI gets switched from local storage to R2
-      (it's a one-line env change; everything is built to be R2-ready)
+- [x] Tell Claude it's done → the ingest CLI gets switched from local storage to R2
+- [ ] **Vérifier les secrets GitHub** : ils ont été saisis avec les mêmes valeurs
+      d'exemple que `ingest/.env`. Corriger `S3_BUCKET` en `alessia-inspiration`
+      et retirer le `.eu` de `S3_ENDPOINT`, sinon le robot Notion échouera en CI
+      avec « The specified bucket does not exist ».
 
 ## Notion → publication automatique (le flow "non-technique")
 

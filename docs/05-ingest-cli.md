@@ -406,8 +406,45 @@ gitignoré, les fichiers n'arriveraient jamais sur Vercel. R2 est donc obligatoi
 
 ---
 
+## Import en masse depuis un dossier local
+
+`worker/import-folder.js` importe une arborescence déjà présente sur le disque —
+typiquement un dossier Drive téléchargé en zip, quand le partage n'est pas public
+(Drive ne permet le téléchargement anonyme que sur les dossiers « Toute personne
+disposant du lien »).
+
+```bash
+cd ingest
+
+# Toujours commencer par là : liste, titres et tags déduits, rien d'importé
+node worker/import-folder.js ~/Downloads/boutiques --dry-run
+
+# Un échantillon, pour juger du rendu avant d'encoder des heures
+node worker/import-folder.js ~/Downloads/boutiques --limit 8 --videos-only
+
+# Le reste, avec des métadonnées communes
+node worker/import-folder.js ~/Downloads/boutiques --tags inspiration --creator "Alessia"
+```
+
+Le parcours est récursif. **Le nom du dossier parent devient un tag**, et sert
+aussi de titre quand le nom de fichier n'apprend rien (`IMG_2812 2.MOV`,
+`DSC00413.jpg`, `Screen Recording…`) — sur une archive rangée par marque, c'est
+la seule métadonnée réellement exploitable. Un nom de fichier parlant est gardé
+tel quel : `vitrine-neon.mp4` → « Vitrine neon ».
+
+Sont ignorés en silence : `.DS_Store`, les `__MACOSX/` et `._*` des zips macOS.
+Les formats non supportés (`.HEIC` en tête, très courant sur les exports iPhone)
+sont comptés et affichés à la fin du listing, pour qu'on sache ce qui manque.
+
+L'anti-doublon se fait sur `import_key = "sha256:<empreinte du fichier>"` :
+le même fichier n'est jamais publié deux fois, **même renommé ou re-téléchargé**,
+et les copies internes à l'arborescence sont écartées avant tout encodage.
+
+---
+
 ## Nice upgrades later
-- **Batch mode:** `node ingest.js ./folder --tags ...` loops a directory.
+- ~~**Batch mode:** `node ingest.js ./folder --tags ...` loops a directory.~~
+  → fait : `worker/import-folder.js` (récursif, avec `--limit` et `--dry-run`).
 - **Dry run:** `--dry` to compress + report sizes without uploading.
 - ~~**Idempotency:** skip if an item with the same source hash already exists.~~
   → fait pour l'import Drive via `import_key`.

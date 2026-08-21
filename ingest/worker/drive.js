@@ -57,13 +57,17 @@ export async function listFolder(folderId) {
       `Dossier Drive illisible (HTTP ${res.status}) — le partage est-il sur « Toute personne disposant du lien » ?`
     );
   }
-  const html = await res.text();
-  if (/Sign in|Connexion/.test(html.slice(0, 4000)) && !html.includes("AF_initDataCallback")) {
+  // A folder that isn't link-public redirects to the sign-in page — which
+  // answers 200 and even carries a data blob of its own, so the landing URL
+  // is the only reliable tell.
+  if (new URL(res.url).hostname === "accounts.google.com") {
     throw new Error(
-      "Google demande une connexion — passe le partage du dossier sur « Toute personne disposant du lien »"
+      "Google demande une connexion : ce dossier n'est pas partagé publiquement.\n" +
+        "Passe son partage sur « Toute personne disposant du lien », ou télécharge-le\n" +
+        "et utilise worker/import-folder.js sur le dossier local."
     );
   }
-  return parseFolderHtml(html);
+  return parseFolderHtml(await res.text());
 }
 
 // The link the download step actually fetches (handled by download.js,

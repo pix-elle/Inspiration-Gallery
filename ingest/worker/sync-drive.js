@@ -22,9 +22,7 @@
 import { readFile, unlink } from "node:fs/promises";
 import { nanoid } from "nanoid";
 import { env, useR2 } from "../lib/env.js";
-import { processImage } from "../lib/image.js";
-import { processVideo } from "../lib/video.js";
-import { dominantColor, blurDataUrl } from "../lib/placeholder.js";
+import { processMedia, isVideoExt } from "../lib/pipeline.js";
 import { insertItem, existingImportKeys } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
 import { downloadToTmp, resolveDownloadUrl } from "./download.js";
@@ -35,8 +33,6 @@ import {
   fileUrl,
   titleFromName,
 } from "./drive.js";
-
-const VIDEO_EXT = new Set([".mov", ".mp4", ".webm", ".m4v"]);
 
 // --- arguments ------------------------------------------------------------
 const argv = process.argv.slice(2);
@@ -137,38 +133,10 @@ for (const f of todo) {
       hintName: f.name ?? "",
     });
     tmpPath = path;
-    const isVideo = VIDEO_EXT.has(ext);
-    console.log(`  téléchargé (${ext}, ${isVideo ? "vidéo" : "image"})`);
+    console.log(`  téléchargé (${ext}, ${isVideoExt(ext) ? "vidéo" : "image"})`);
 
     const id = nanoid(10);
-    let media;
-    if (isVideo) {
-      const v = await processVideo(path, id);
-      media = {
-        type: "video",
-        width: v.width,
-        height: v.height,
-        dominantColor: await dominantColor(v.posterPng),
-        blurDataUrl: await blurDataUrl(v.posterPng),
-        posterUrl: v.posterUrl,
-        videoUrl: v.videoUrl,
-        imageBase: null,
-        videoAv1Url: null,
-      };
-    } else {
-      const img = await processImage(path, id);
-      media = {
-        type: "image",
-        width: img.width,
-        height: img.height,
-        dominantColor: await dominantColor(path),
-        blurDataUrl: await blurDataUrl(path),
-        imageBase: img.imageBase,
-        posterUrl: null,
-        videoUrl: null,
-        videoAv1Url: null,
-      };
-    }
+    const media = await processMedia(path, id, ext);
 
     await insertItem({
       id,

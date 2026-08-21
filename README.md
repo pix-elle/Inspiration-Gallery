@@ -48,7 +48,17 @@ node worker/sync-drive.js --dry-run "<lien du dossier>"   # liste, n'importe rie
 node worker/sync-drive.js "<lien du dossier>" --tags motion --creator "Alessia"
 ```
 
-Relancer la commande ne crée pas de doublons. Détails : `docs/05-ingest-cli.md`.
+Si le dossier n'est **pas** partagé publiquement (Drive refuse alors tout
+téléchargement anonyme), télécharge-le et importe l'arborescence locale :
+
+```bash
+node worker/import-folder.js ~/Downloads/boutiques --dry-run
+node worker/import-folder.js ~/Downloads/boutiques --limit 8 --videos-only
+```
+
+Le nom du dossier parent devient un tag et, à défaut de nom de fichier parlant,
+le titre. Relancer une commande ne crée jamais de doublons (empreinte du
+fichier). Détails : `docs/05-ingest-cli.md`.
 
 ## Publier du contenu
 
