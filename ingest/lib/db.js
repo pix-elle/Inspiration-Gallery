@@ -42,3 +42,44 @@ export async function existingImportKeys(keys) {
   `;
   return new Set(rows.map((r) => r.import_key));
 }
+
+// --- back-office ----------------------------------------------------------
+
+// La ligne créée par le portail, telle que le runner la trouve.
+export async function getItemForProcessing(id) {
+  const rows = await sql`
+    select id, type, source_key, status from items where id = ${id}
+  `;
+  return rows[0] ?? null;
+}
+
+// Fin de traitement : on remplit les colonnes média et on publie. Les
+// dimensions viennent du fichier produit, jamais de la source (les téléphones
+// filment en paysage avec un drapeau de rotation).
+export async function publishProcessedItem(id, media) {
+  await sql`
+    update items set
+      type           = ${media.type},
+      width          = ${media.width},
+      height         = ${media.height},
+      dominant_color = ${media.dominantColor},
+      blur_data_url  = ${media.blurDataUrl},
+      poster_url     = ${media.posterUrl},
+      image_base     = ${media.imageBase},
+      video_url      = ${media.videoUrl},
+      video_av1_url  = ${media.videoAv1Url},
+      status         = 'published',
+      error          = null,
+      updated_at     = now()
+    where id = ${id}
+  `;
+}
+
+export async function failItem(id, message) {
+  await sql`
+    update items
+       set status = 'failed', error = ${String(message).slice(0, 2000)},
+           updated_at = now()
+     where id = ${id}
+  `;
+}

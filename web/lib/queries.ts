@@ -1,6 +1,6 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { Agent, fetch as undiciFetch } from "undici";
-import type { Item, ItemsPage } from "./types";
+import type { Brand, Item, ItemsPage, ProjectType } from "./types";
 
 // Force IPv4: this machine has no IPv6 route and Node's dual-stack
 // auto-selection hangs on Neon's endpoints instead of falling back.
@@ -98,4 +98,72 @@ export async function consumeMagicToken(hash: string): Promise<string | null> {
 // Housekeeping, called on each link request: the table is a queue, not a log.
 export async function purgeExpiredTokens() {
   await sql`delete from auth_tokens where expires_at < now() - interval '1 day'`;
+}
+
+// --- marques --------------------------------------------------------------
+
+export async function getBrands(): Promise<Brand[]> {
+  return (await sql`select * from brands order by name`) as Brand[];
+}
+
+function slugify(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // « Café » et « Cafe » donnent le même slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// Alessia peut choisir une marque existante ou en saisir une nouvelle. Le
+// rapprochement se fait sur le slug, pas sur le libellé : « Pop Mart »,
+// « pop mart » et « POP MART » retombent donc sur la même ligne au lieu d'en
+// créer trois.
+export async function findOrCreateBrand(name: string): Promise<Brand> {
+  const slug = slugify(name);
+  if (!slug) throw new Error("Nom de marque vide");
+
+  const existing = (await sql`select * from brands where slug = ${slug}`) as Brand[];
+  if (existing[0]) return existing[0];
+
+  const rows = (await sql`
+    insert into brands (name, slug) values (${name.trim()}, ${slug})
+    on conflict (slug) do update set slug = excluded.slug
+    returning *
+  `) as Brand[];
+  return rows[0];
+}
+
+// --- items côté back-office ----------------------------------------------
+
+type NewItem = {
+  id: string;
+  type: "image" | "video";
+  title: string | null;
+  description: string | null;
+  projectType: ProjectType | null;
+  brandId: string | null;
+  sourceKey: string;
+};
+
+// La ligne naît en « processing » : elle existe, elle est visible dans le
+// tableau d'administration, mais la galerie publique l'ignore. Les dimensions
+// sont à 0 jusqu'à ce que le runner ait mesuré le fichier encodé — c'est lui
+// qui connaît la vraie taille, rotation appliquée.
+export async function createProcessingItem(item: NewItem) {
+  await sql`
+    insert into items
+      (id, type, title, description, tags, project_type, brand_id,
+       source_key, status, width, height)
+    values
+      (${item.id}, ${item.type}, ${item.title}, ${item.description}, ${[]},
+       ${item.projectType}, ${item.brandId}, ${item.sourceKey},
+       'processing', 0, 0)
+  `;
+}
+
+export async function getAdminItems(): Promise<Item[]> {
+  return (await sql`
+    select * from items order by updated_at desc, created_at desc
+  `) as Item[];
 }

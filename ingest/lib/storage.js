@@ -45,6 +45,16 @@ export async function storeBuffer(buffer, key) {
   return `${CDN_BASE_URL}/${key}`;
 }
 
+// Télécharge un objet du bucket (l'original déposé par le portail). On passe
+// par l'API S3 authentifiée plutôt que par l'URL publique : le runner a déjà
+// les identifiants, et rien n'oblige alors les sources à être publiques.
+export async function fetchObject(key) {
+  if (!useR2) throw new Error("Téléchargement depuis R2 impossible en mode local");
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const res = await s3.send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+  return Buffer.from(await res.Body.transformToByteArray());
+}
+
 export function storageMode() {
   return useR2 ? `R2 (${env.S3_BUCKET})` : `local (${LOCAL_MEDIA_DIR})`;
 }
