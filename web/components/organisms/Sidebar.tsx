@@ -3,8 +3,9 @@ import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { SidebarNav } from "@/components/molecules/SidebarNav";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { siteConfig } from "@/site.config";
+import type { Settings } from "@/lib/settings";
 
-export function Sidebar() {
+export function Sidebar({ settings }: { settings: Settings }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-56 flex-col gap-6 border-r border-foreground/10 p-4 pb-8 md:flex">
       <Logo />
@@ -22,15 +23,14 @@ export function Sidebar() {
               <rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.5" />
               <path d="m2.5 4.5 5.5 4.25L13.5 4.5" />
             </svg>
-            La newsletter
+            {settings.sidebarNewsletterTitle}
           </h2>
           <p className="text-xs leading-relaxed text-foreground/60">
-            L&apos;inspiration vidéo SaaS qui performe, chaque semaine
-            directement dans votre inbox.
+            {settings.sidebarNewsletterText}
           </p>
         </div>
         <SubscribeButton
-          label="Recevoir la newsletter"
+          label={settings.subscribeButtonLabel}
           className="w-full px-3 py-2"
         />
         <hr className="border-foreground/10" />

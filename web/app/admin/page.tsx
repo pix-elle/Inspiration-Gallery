@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/dal";
 import { getAdminItems, getBrands } from "@/lib/queries";
+import { getSettings } from "@/lib/settings";
 import { AdminTable } from "./AdminTable";
+import { SettingsForm } from "./SettingsForm";
 
 export const metadata: Metadata = {
   title: "Administration",
@@ -15,7 +17,11 @@ export default async function AdminPage() {
   // The real gate. proxy.ts only redirected on a missing cookie; this is what
   // verifies the signature, the expiry and the allowlist.
   const session = await requireSession();
-  const [items, brands] = await Promise.all([getAdminItems(), getBrands()]);
+  const [items, brands, settings] = await Promise.all([
+    getAdminItems(),
+    getBrands(),
+    getSettings(),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -35,6 +41,8 @@ export default async function AdminPage() {
       </header>
 
       <AdminTable initialItems={items} initialBrands={brands} />
+
+      <SettingsForm initial={settings} />
     </main>
   );
 }

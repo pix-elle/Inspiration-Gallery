@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { siteConfig } from "@/site.config";
+import { getSettings } from "@/lib/settings";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,17 +9,19 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: siteConfig.name,
-    template: `%s · ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  openGraph: {
-    siteName: siteConfig.name,
-    type: "website",
-  },
-};
+// The description is editable from /admin, so the metadata is generated per
+// request rather than being a static object.
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  return {
+    title: {
+      default: siteConfig.name,
+      template: `%s · ${siteConfig.name}`,
+    },
+    description: settings.siteDescription,
+    openGraph: { siteName: siteConfig.name, type: "website" },
+  };
+}
 
 // Runs before the first paint, so a dark-mode visitor never sees a white
 // flash. It has to be inline and synchronous — a React effect runs after the

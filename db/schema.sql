@@ -69,6 +69,15 @@ create table auth_tokens (
 );
 create index auth_tokens_expires_idx on auth_tokens (expires_at);
 
+-- Les textes éditables du site et l'état du pop-up newsletter, pilotés
+-- depuis /admin. Une clé absente retombe sur sa valeur par défaut définie
+-- dans web/lib/settings.ts : ajouter un réglage ne demande pas de migration.
+create table settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- Les inscrits à la newsletter (email unique, source = 'modal' | 'button').
 create table subscribers (
   email      text primary key,
@@ -115,3 +124,10 @@ create table if not exists auth_tokens (
   created_at timestamptz not null default now()
 );
 create index if not exists auth_tokens_expires_idx on auth_tokens (expires_at);
+
+-- 2026-08-22 — textes éditables et réglages du site.
+create table if not exists settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
