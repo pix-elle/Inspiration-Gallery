@@ -24,10 +24,18 @@ export async function processVideo(inputPath, id) {
   const { width, height, duration } = await probe(inputPath);
 
   // Compressed, muted, faststart MP4 — specs from docs/02.
+  //
+  // format=yuv420p is not cosmetic: iPhone films in HDR by default
+  // (yuv420p10le, HLG transfer) and libx264's High profile is 8-bit only —
+  // without the conversion, ffmpeg dies with "Could not open encoder".
+  // A straight conversion is also the *right* one here: HLG was designed to
+  // degrade gracefully on SDR screens, so the picture stays vivid. Feeding
+  // HLG values to the tonemap filter without linearising them (this build
+  // has no zscale) crushes the image instead — measured, not assumed.
   const mp4Path = join(tmpdir(), `ingest-${id}.mp4`);
   await run("ffmpeg", [
     "-i", inputPath,
-    "-vf", "scale='min(1920,iw)':-2",
+    "-vf", "scale='min(1920,iw)':-2,format=yuv420p",
     "-c:v", "libx264", "-profile:v", "high", "-crf", "26", "-preset", "slow",
     "-movflags", "+faststart",
     "-an",

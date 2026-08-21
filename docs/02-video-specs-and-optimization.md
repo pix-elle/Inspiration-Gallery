@@ -41,12 +41,32 @@ no visible quality loss. Every file goes through compression before it reaches a
 **Short muted preview clip (H.264 MP4):**
 ```bash
 ffmpeg -i input.mov \
-  -vf "scale='min(1920,iw)':-2" \
+  -vf "scale='min(1920,iw)':-2,format=yuv420p" \
   -c:v libx264 -profile:v high -crf 26 -preset slow \
   -movflags +faststart \
   -an \
   output.mp4
 ```
+
+> ### Le piège HDR — ne retire pas `format=yuv420p`
+>
+> **L'iPhone filme en HDR par défaut** : `pix_fmt=yuv420p10le`, transfert HLG
+> (`arib-std-b67`). Sur un lot réel de 66 vidéos venant du Drive, **58 étaient
+> dans ce cas**. Or le profil High de libx264 est 8 bits uniquement : sans
+> conversion, ffmpeg s'arrête sur un `Could not open encoder before EOF`
+> difficile à relier à sa cause.
+>
+> `format=yuv420p` fait la conversion, et c'est aussi le **bon** rendu ici :
+> le HLG est conçu pour rester lisible sur écran SDR, l'image garde ses
+> couleurs. La tentation est d'ajouter un vrai tone-mapping — sur un build
+> ffmpeg sans `zscale` (cas de celui installé ici), la chaîne
+> `format=gbrpf32le,tonemap=hable` s'exécute sans erreur mais **écrase
+> l'image** : elle reçoit des valeurs encodées en HLG là où elle attend de la
+> lumière linéaire. Comparaison faite sur image extraite, pas supposée.
+>
+> Pour un vrai tone-mapping il faudrait un ffmpeg compilé avec `libzimg`
+> (`zscale=t=linear,tonemap=hable,zscale=t=bt709`) — inutile tant que les
+> sources sont en HLG.
 
 **Smaller AV1 version (optional, for modern browsers):**
 ```bash
