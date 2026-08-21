@@ -1,6 +1,7 @@
 import { Logo } from "@/components/atoms/Logo";
 import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { SidebarNav } from "@/components/molecules/SidebarNav";
+import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { siteConfig } from "@/site.config";
 
 export function Sidebar() {
@@ -68,6 +69,9 @@ export function Sidebar() {
               </svg>
             </a>
           )}
+        </div>
+        <div className="flex items-center px-2">
+          <ThemeToggle />
         </div>
       </div>
     </aside>

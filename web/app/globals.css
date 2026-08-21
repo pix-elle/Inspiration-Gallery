@@ -10,11 +10,57 @@
   --color-foreground: var(--foreground);
 }
 
+/* Three states, not two: no data-theme attribute means "follow the system",
+   which is the default until the sidebar toggle is used. The :not() guard is
+   what lets an explicit "light" choice win over a dark OS setting — without
+   it, the media query would keep overriding the user. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* Tells the browser to render its own widgets (scrollbars, form controls) to
+   match — otherwise a dark page keeps a white scrollbar. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Which icon the theme toggle shows is decided here rather than in React.
+   The server can't know the visitor's theme, so a JS-driven icon would paint
+   the wrong one and swap it after hydration. Both are rendered; these four
+   rules cover the four combinations of (OS preference × explicit choice).
+   The :not() guard is what makes an explicit "light" survive a dark OS. */
+.theme-icon-moon {
+  display: block;
+}
+.theme-icon-sun {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-icon-moon {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .theme-icon-sun {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .theme-icon-moon {
+  display: none;
+}
+:root[data-theme="dark"] .theme-icon-sun {
+  display: block;
 }
 
 body {
