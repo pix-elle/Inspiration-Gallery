@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Google Drive → gallery bulk import.
 //
-// One-shot companion to sync-notion.js: takes a shared Drive folder (or a
-// handful of file links) and pushes every video/image through the exact same
-// pipeline — compress, upload to storage, insert the row.
+// Bulk import: takes a shared Drive folder (or a handful of file links) and
+// pushes every video/image through the same pipeline as the back-office —
+// compress, upload to storage, insert the row.
 //
 // Usage:
 //   node worker/sync-drive.js <lien-dossier-ou-fichier> [...]

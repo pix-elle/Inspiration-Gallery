@@ -11,13 +11,6 @@ neonConfig.fetchFunction = (url, init) =>
 
 const sql = neon(env.DATABASE_URL);
 
-// Returns true if the item existed. Media files (R2 / web/public/media)
-// are left behind on purpose — cheap, and the id is never reused.
-export async function deleteItem(id) {
-  const rows = await sql`delete from items where id = ${id} returning id`;
-  return rows.length > 0;
-}
-
 export async function insertItem(row) {
   await sql`
     insert into items

@@ -365,9 +365,9 @@ node ingest.js ./exports/pricing-page.png \
 
 ## Import en masse depuis un dossier Google Drive
 
-`worker/sync-drive.js` est le pendant « one-shot » du robot Notion : il prend un
-dossier Drive partagé et fait passer **chaque vidéo/image** par exactement le même
-pipeline (compression → stockage → ligne en base).
+`worker/sync-drive.js` prend un dossier Drive partagé et fait passer **chaque
+vidéo/image** par exactement le même pipeline que le back-office
+(compression → stockage → ligne en base).
 
 ```bash
 cd ingest

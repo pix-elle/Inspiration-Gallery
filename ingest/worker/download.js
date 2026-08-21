@@ -16,7 +16,7 @@ const ALLOWED_EXT = new Set(Object.values(EXT_BY_MIME));
 const MAX_BYTES = 500 * 1024 * 1024; // 500 MB safety cap
 
 // Turn a share link into a direct-download URL. Returns null when the
-// service can't be automated (that becomes a readable error in Notion).
+// service can't be automated (that becomes a readable error for the caller).
 export function resolveDownloadUrl(url) {
   const u = new URL(url);
 
@@ -36,8 +36,7 @@ export function resolveDownloadUrl(url) {
 
   if (u.hostname.endsWith("icloud.com")) return null; // no stable direct URL
 
-  // Anything else: assume it's already a direct file URL (e.g. Notion
-  // attachment signed URL, or a plain hosted file).
+  // Anything else: assume it's already a direct file URL.
   return url;
 }
 
@@ -100,7 +99,7 @@ export async function downloadToTmp(url, { hintName = "" } = {}) {
     );
   }
 
-  const dest = join(tmpdir(), `notion-ingest-${Date.now()}${ext}`);
+  const dest = join(tmpdir(), `ingest-download-${Date.now()}${ext}`);
   await pipeline(Readable.fromWeb(res.body), createWriteStream(dest));
   return { path: dest, ext };
 }
