@@ -9,6 +9,7 @@
 //   node worker/import-folder.js ~/Downloads/boutiques --dry-run
 //   node worker/import-folder.js ~/Downloads/boutiques --limit 8
 //   node worker/import-folder.js ~/Downloads/boutiques --tags inspiration --creator "Alessia"
+//   node worker/import-folder.js ~/Downloads/boutiques --brand-from-folder --project-type store
 //
 // Walks the folder recursively. The name of the folder a file sits in
 // becomes a tag (and the title, when the filename is a camera name like
@@ -28,7 +29,7 @@ import { basename, extname, join, relative } from "node:path";
 import { nanoid } from "nanoid";
 import { env, useR2 } from "../lib/env.js";
 import { processMedia, isVideoExt, MEDIA_EXT } from "../lib/pipeline.js";
-import { insertItem, existingImportKeys } from "../lib/db.js";
+import { insertItem, existingImportKeys, findOrCreateBrand } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
 
 // "IMG_2812 2.MOV", "DSC00413.jpg", "VID_20240115.mp4"… — a camera dumped
@@ -44,6 +45,11 @@ const flags = {
   creator: null,
   category: null,
   videosOnly: false,
+  projectType: null,
+  brandFromFolder: false,
+  // Some folders are filing, not meaning: "a trier", "others", "fails".
+  // Using them as titles produces a gallery of items all called "A trier".
+  titleFromFolder: true,
 };
 const roots = [];
 
@@ -51,6 +57,9 @@ for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--dry-run") flags.dryRun = true;
   else if (a === "--videos-only") flags.videosOnly = true;
+  else if (a === "--brand-from-folder") flags.brandFromFolder = true;
+  else if (a === "--no-title-from-folder") flags.titleFromFolder = false;
+  else if (a === "--project-type") flags.projectType = argv[++i];
   else if (a === "--limit") flags.limit = Number(argv[++i]);
   else if (a === "--tags") flags.tags = argv[++i].split(",").map((t) => t.trim()).filter(Boolean);
   else if (a === "--creator") flags.creator = argv[++i];
@@ -64,12 +73,18 @@ for (let i = 0; i < argv.length; i++) {
 if (roots.length === 0) {
   console.error(
     "Usage : node worker/import-folder.js <dossier> [--dry-run] [--limit N]\n" +
-      "                                   [--videos-only] [--tags a,b] [--creator nom]"
+      "         [--videos-only] [--tags a,b] [--creator nom]\n" +
+      "         [--brand-from-folder] [--project-type popup|store]\n" +
+      "         [--no-title-from-folder]"
   );
   process.exit(1);
 }
 if (!Number.isFinite(flags.limit) && flags.limit !== Infinity) {
   console.error("--limit attend un nombre");
+  process.exit(1);
+}
+if (flags.projectType && !["popup", "store"].includes(flags.projectType)) {
+  console.error("--project-type attend « popup » ou « store »");
   process.exit(1);
 }
 if (!env.DATABASE_URL) {
@@ -173,7 +188,13 @@ function metaFor(f) {
   const name = basename(f.relative);
   const stem = name.slice(0, name.length - extname(name).length);
   const pretty = (s) => s.replace(/[_-]+/g, " ").trim().replace(/^./, (c) => c.toUpperCase());
-  const title = CAMERA_NAME.test(stem) ? pretty(f.folder) : pretty(stem);
+  // A camera name says nothing, so the folder stands in — unless the folder
+  // says nothing either, in which case no title beats a wrong one.
+  const title = CAMERA_NAME.test(stem)
+    ? flags.titleFromFolder
+      ? pretty(f.folder)
+      : null
+    : pretty(stem);
   const folderTag = f.folder.toLowerCase().replace(/[_-]+/g, " ").trim();
   return { title, tags: [...new Set([...flags.tags, folderTag])] };
 }
@@ -181,8 +202,9 @@ function metaFor(f) {
 if (flags.dryRun) {
   for (const f of todo) {
     const { title, tags } = metaFor(f);
+    const brand = flags.brandFromFolder ? `  marque: ${f.folder}` : "";
     console.log(
-      `  • ${f.relative}  →  « ${title} »  [${tags.join(", ")}]  ${(f.size / 1e6).toFixed(1)} Mo`
+      `  • ${f.relative}  →  « ${title ?? "(sans titre)"} »  [${tags.join(", ")}]${brand}  ${(f.size / 1e6).toFixed(1)} Mo`
     );
   }
   console.log("\n(dry-run — rien n'a été importé)");
@@ -201,6 +223,13 @@ for (const [i, f] of todo.entries()) {
     const id = nanoid(10);
     const media = await processMedia(f.path, id, f.ext);
 
+    // The brand is the folder the file sits in — on an archive filed by
+    // brand, that is the metadata. Resolved per item so a new folder name
+    // creates its brand once and every later file reuses it.
+    const brandId = flags.brandFromFolder
+      ? await findOrCreateBrand(f.folder)
+      : null;
+
     await insertItem({
       id,
       title,
@@ -210,6 +239,8 @@ for (const [i, f] of todo.entries()) {
       creator: flags.creator,
       sourceUrl: null,
       importKey: f.importKey,
+      projectType: flags.projectType,
+      brandId,
       ...media,
     });
 

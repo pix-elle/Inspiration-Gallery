@@ -16,14 +16,40 @@ export async function insertItem(row) {
     insert into items
       (id, type, title, description, tags, category, creator, source_url,
        width, height, dominant_color, blur_data_url,
-       poster_url, image_base, video_url, video_av1_url, import_key)
+       poster_url, image_base, video_url, video_av1_url, import_key,
+       project_type, brand_id, status)
     values
       (${row.id}, ${row.type}, ${row.title}, ${row.description}, ${row.tags},
        ${row.category}, ${row.creator}, ${row.sourceUrl},
        ${row.width}, ${row.height}, ${row.dominantColor}, ${row.blurDataUrl},
        ${row.posterUrl}, ${row.imageBase}, ${row.videoUrl}, ${row.videoAv1Url},
-       ${row.importKey ?? null})
+       ${row.importKey ?? null},
+       ${row.projectType ?? null}, ${row.brandId ?? null}, 'published')
   `;
+}
+
+// Même règle que le back-office : on rapproche sur le slug, pas sur le
+// libellé, sinon « Pop Mart » et « pop mart » deviennent deux marques.
+function slugify(name) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export async function findOrCreateBrand(name) {
+  const slug = slugify(name);
+  if (!slug) return null;
+  const found = await sql`select id from brands where slug = ${slug}`;
+  if (found[0]) return found[0].id;
+  const created = await sql`
+    insert into brands (name, slug) values (${name.trim()}, ${slug})
+    on conflict (slug) do update set slug = excluded.slug
+    returning id
+  `;
+  return created[0].id;
 }
 
 // Which of these import keys are already in the gallery? Lets a bulk import
