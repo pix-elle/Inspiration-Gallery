@@ -21,7 +21,11 @@ async function probe(inputPath) {
 }
 
 export async function processVideo(inputPath, id) {
-  const { width, height, duration } = await probe(inputPath);
+  // Dimensions come from the *output* further down, never from here: phones
+  // record portrait clips as 1920x1080 plus a rotation flag, ffmpeg applies
+  // the rotation when transcoding, and the gallery would otherwise reserve a
+  // landscape tile for a portrait video.
+  const { duration } = await probe(inputPath);
 
   // Compressed, muted, faststart MP4 — specs from docs/02.
   //
@@ -41,6 +45,7 @@ export async function processVideo(inputPath, id) {
     "-an",
     "-y", mp4Path,
   ]);
+  const { width, height } = await probe(mp4Path);
   const mp4 = await readFile(mp4Path);
   const videoUrl = await storeBuffer(mp4, `items/${id}/video.mp4`);
   console.log(`  video: ${(mp4.length / 1024 / 1024).toFixed(2)}MB (${duration.toFixed(1)}s)`);
