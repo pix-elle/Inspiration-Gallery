@@ -52,8 +52,8 @@ export const siteConfig = {
   // Pour le réafficher : enlève le //.
   nav: [
     { href: "/", label: "Découvrir", icon: "discover" },
-    { href: "/images", label: "Images", icon: "images" },
-    { href: "/videos", label: "Vidéos", icon: "videos" },
+    // { href: "/images", label: "Images", icon: "images" },
+    // { href: "/videos", label: "Vidéos", icon: "videos" },
     // { href: "/saved", label: "Enregistrés", icon: "saved" },
     // { href: "/about", label: "À propos", icon: "about" },
   ],
