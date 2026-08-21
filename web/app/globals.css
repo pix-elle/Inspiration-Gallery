@@ -63,10 +63,30 @@
   display: var(--theme-icon-sun);
 }
 
+/* Anchors and programmatic scrolls ease instead of jumping. Deliberately
+   scoped to that: the wheel keeps the OS's own momentum, which no JS curve
+   improves — and hijacking it would force a repaint of a grid full of
+   playing videos on every frame. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Offscreen tiles cost nothing to render. The grid grows without bound as
+   pages load, so this is what keeps a long scroll cheap.
+   `auto` makes the browser remember each tile's real height once it has been
+   rendered — the 400px fallback only ever applies to a tile that has never
+   been on screen, and only for its height (the width is set by the column). */
+.gallery-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 400px;
 }
 
 /* Tailwind v4 dropped the pointer cursor on buttons — restore it. */

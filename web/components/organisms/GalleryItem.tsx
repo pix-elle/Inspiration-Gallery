@@ -21,7 +21,7 @@ export function GalleryItem({ item, onOpen, transitionName }: GalleryItemProps) 
     <a
       href={`/item/${item.id}`}
       aria-label={item.title ?? `View ${item.type}`}
-      className="block px-2 pb-4"
+      className="gallery-tile block px-2 pb-4"
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();

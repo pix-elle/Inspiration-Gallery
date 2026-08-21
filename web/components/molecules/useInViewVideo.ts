@@ -19,7 +19,10 @@ export function useInViewVideo(src: string) {
           el.pause();
         }
       },
-      { rootMargin: "200px", threshold: 0.25 }
+      // Half the tile must be on screen, and the margin only covers the
+      // fold — at 200px/0.25 nine clips decoded at once mid-gallery, which
+      // is the real cost on a laptop, not the scrolling itself.
+      { rootMargin: "100px", threshold: 0.5 }
     );
     io.observe(el);
     return () => io.disconnect();
