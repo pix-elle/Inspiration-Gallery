@@ -6,6 +6,7 @@ import {
   createProcessingItem,
   findOrCreateBrand,
   getAdminItems,
+  revalidateGallery,
 } from "@/lib/queries";
 import type { ProjectType } from "@/lib/types";
 
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
   // table shows and which a manual re-run resolves. It must not make the
   // upload itself look like it failed.
   await dispatchTranscode(id);
+  revalidateGallery();
 
   return Response.json({ id }, { status: 201 });
 }

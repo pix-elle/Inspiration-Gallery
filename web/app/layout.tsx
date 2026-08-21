@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AppShell } from "@/components/templates/AppShell";
 import { siteConfig } from "@/site.config";
 import "./globals.css";
 
@@ -43,9 +42,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: applyStoredTheme }} />
       </head>
-      <body className="min-h-full">
-        <AppShell>{children}</AppShell>
-      </body>
+      {/* Deliberately bare: each route group brings its own chrome. The
+          public gallery gets the sidebar via app/(site)/layout.tsx; /admin
+          and /login are standalone screens. */}
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

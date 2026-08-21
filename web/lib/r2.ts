@@ -1,6 +1,12 @@
 import "server-only";
 
-import { S3Client, PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // The browser uploads straight to Cloudflare: the file never passes through
@@ -75,4 +81,33 @@ export async function headUpload(key: string) {
   } catch {
     return null; // absent: the upload never completed
   }
+}
+
+// Deleting an item deletes its files. The command-line importers deliberately
+// left media orphaned — cheap, and ids are never reused — but that was a
+// choice for a technical tool. With a delete button in a GUI, files nobody
+// can reach again would just be silent waste.
+export async function deleteUnder(prefixes: string[]): Promise<number> {
+  const s3 = client();
+  const Bucket = bucket();
+  let deleted = 0;
+
+  for (const Prefix of prefixes) {
+    if (!Prefix) continue;
+    let token: string | undefined;
+    do {
+      const listed = await s3.send(
+        new ListObjectsV2Command({ Bucket, Prefix, ContinuationToken: token })
+      );
+      const keys = (listed.Contents ?? []).map((o) => ({ Key: o.Key! }));
+      if (keys.length > 0) {
+        await s3.send(
+          new DeleteObjectsCommand({ Bucket, Delete: { Objects: keys } })
+        );
+        deleted += keys.length;
+      }
+      token = listed.NextContinuationToken;
+    } while (token);
+  }
+  return deleted;
 }

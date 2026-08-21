@@ -37,8 +37,11 @@ if (!useR2) {
 
 const item = await getItemForProcessing(id);
 if (!item) {
-  console.error(`Item ${id} introuvable en base`);
-  process.exit(1);
+  // Deleted between the upload and the moment this runner started — a normal
+  // thing for Alessia to do. Exiting 0 keeps the Actions history free of red
+  // crosses that mean "everything went as intended".
+  console.log(`Item ${id} supprimé entre-temps — rien à encoder`);
+  process.exit(0);
 }
 if (!item.source_key) {
   await failItem(id, "Aucun fichier source associé à cet item");

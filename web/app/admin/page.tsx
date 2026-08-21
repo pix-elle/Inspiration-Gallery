@@ -1,35 +1,40 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/dal";
+import { getAdminItems, getBrands } from "@/lib/queries";
+import { AdminTable } from "./AdminTable";
 
 export const metadata: Metadata = {
   title: "Administration",
   robots: { index: false, follow: false },
 };
 
+// Nothing here may be cached or prerendered: the table is per-session data.
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   // The real gate. proxy.ts only redirected on a missing cookie; this is what
   // verifies the signature, the expiry and the allowlist.
   const session = await requireSession();
+  const [items, brands] = await Promise.all([getAdminItems(), getBrands()]);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <header className="flex items-baseline justify-between gap-4">
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <header className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-lg font-semibold">Administration</h1>
-        <form action="/api/auth/logout" method="post">
-          <button
-            type="submit"
-            className="text-sm text-foreground/60 underline underline-offset-4 hover:text-foreground"
-          >
-            Se déconnecter
-          </button>
-        </form>
+        <div className="flex items-center gap-4 text-sm text-foreground/60">
+          <span>{session.email}</span>
+          <form action="/api/auth/logout" method="post">
+            <button
+              type="submit"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Se déconnecter
+            </button>
+          </form>
+        </div>
       </header>
 
-      <p className="text-sm text-foreground/60">
-        Connectée en tant que{" "}
-        <span className="text-foreground">{session.email}</span>. Le tableau des
-        vidéos arrive à l&apos;étape suivante.
-      </p>
+      <AdminTable initialItems={items} initialBrands={brands} />
     </main>
   );
 }

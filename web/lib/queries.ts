@@ -1,5 +1,6 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { Agent, fetch as undiciFetch } from "undici";
+import { revalidatePath } from "next/cache";
 import type { Brand, Item, ItemsPage, ProjectType } from "./types";
 
 // Force IPv4: this machine has no IPv6 route and Node's dual-stack
@@ -166,4 +167,64 @@ export async function getAdminItems(): Promise<Item[]> {
   return (await sql`
     select * from items order by updated_at desc, created_at desc
   `) as Item[];
+}
+
+// Admin reads have no status filter: the table must show everything, drafts
+// and failures included. That's precisely why it lives in a separate function
+// from getItem(), which is the public one and can never be relaxed.
+export async function getAdminItem(id: string): Promise<Item | null> {
+  const rows = (await sql`select * from items where id = ${id}`) as Item[];
+  return rows[0] ?? null;
+}
+
+type ItemEdits = {
+  title?: string | null;
+  description?: string | null;
+  projectType?: ProjectType | null;
+  brandId?: string | null;
+  status?: Item["status"];
+};
+
+// Only the fields actually present in the request are touched, so editing a
+// title never silently clears a brand. Postgres does the coalescing: passing
+// null for "unchanged" would be ambiguous with null for "empty this field",
+// hence the explicit booleans.
+export async function updateItem(id: string, edits: ItemEdits) {
+  await sql`
+    update items set
+      title        = case when ${edits.title !== undefined} then ${edits.title ?? null} else title end,
+      description  = case when ${edits.description !== undefined} then ${edits.description ?? null} else description end,
+      project_type = case when ${edits.projectType !== undefined} then ${edits.projectType ?? null} else project_type end,
+      brand_id     = case when ${edits.brandId !== undefined} then ${edits.brandId ?? null} else brand_id end,
+      status       = coalesce(${edits.status ?? null}, status),
+      updated_at   = now()
+    where id = ${id}
+  `;
+}
+
+// Returns what the caller needs to clean up in storage afterwards.
+export async function deleteItemRow(id: string): Promise<{ sourceKey: string | null } | null> {
+  const rows = (await sql`
+    delete from items where id = ${id} returning source_key
+  `) as { source_key: string | null }[];
+  if (!rows[0]) return null;
+  return { sourceKey: rows[0].source_key };
+}
+
+// Sends a failed item back through the encoder: the original is still on R2,
+// so nothing needs re-uploading.
+export async function markForRetry(id: string) {
+  await sql`
+    update items set status = 'processing', error = null, updated_at = now()
+    where id = ${id}
+  `;
+}
+
+// The gallery pages and each item page are cached for five minutes. Without
+// this, unpublishing an item left its page reachable for up to that long —
+// measured: /item/<id> still answered 200 right after the status changed.
+// Editing a title had the same delay, which reads as "my change was lost".
+export function revalidateGallery(itemId?: string) {
+  for (const path of ["/", "/images", "/videos"]) revalidatePath(path);
+  if (itemId) revalidatePath(`/item/${itemId}`);
 }
