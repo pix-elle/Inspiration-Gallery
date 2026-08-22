@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, X } from "lucide-react";
+import { ICONS } from "@/components/atoms/icons/nav";
 import type { FilterOptions, GalleryFilters } from "@/lib/types";
 
 // Sits above the grid rather than in the sidebar. A filter acts on the grid,
@@ -21,6 +22,12 @@ const PROJECT_LABELS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   image: "Images",
   video: "Vidéos",
+};
+// The same drawings the sidebar used for these two tabs, so moving them into
+// the filter bar doesn't make them look like something new.
+const TYPE_ICONS: Record<string, keyof typeof ICONS> = {
+  image: "images",
+  video: "videos",
 };
 
 type Props = { options: FilterOptions; active: GalleryFilters };
@@ -64,6 +71,9 @@ export function FilterBar({ options, active }: Props) {
             active={active.type === value}
             onClick={() => apply("type", value)}
           >
+            <span className="mr-1.5 h-4 w-4 shrink-0" aria-hidden>
+              {ICONS[TYPE_ICONS[value]]}
+            </span>
             {TYPE_LABELS[value]}
             <Count n={count} />
           </Pill>
