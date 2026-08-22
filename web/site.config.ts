@@ -39,13 +39,15 @@ export const siteConfig = {
 
   // Réseaux sociaux (liens en bas de la sidebar).
   // Remplace par tes vrais comptes. Pour masquer une icône,
-  // remplace son lien par null (ex.  instagram: null) — c'est pour
-  // ça que linkedin est à null : l'icône n'apparaîtra qu'une fois
-  // l'adresse du compte renseignée, plutôt que de pointer dans le vide.
+  // remplace son lien par null (ex.  instagram: null) : elle
+  // disparaît alors, plutôt que de pointer dans le vide.
   socials: {
     instagram: "https://www.instagram.com/motioon.collective" as string | null,
     twitter: "https://x.com/motioon.collective" as string | null,
-    linkedin: null as string | null,
+    linkedin:
+      "https://www.linkedin.com/company/nexus-retail-experience-llc/" as
+        | string
+        | null,
   },
 
   // Les onglets du menu, dans l'ordre d'affichage.
