@@ -30,7 +30,13 @@ export async function GalleryFeed({
           Aucun résultat pour ces filtres.
         </p>
       ) : (
+        // The key is what makes a filter click take effect. Gallery keeps its
+        // items in state seeded from these props, and a seed is only read on
+        // mount: without a new key, the server would send the filtered list
+        // and the grid would go on showing the old one until a full reload.
+        // React's own answer to "reset state when a prop changes" is a key.
         <Gallery
+          key={JSON.stringify(filters)}
           initialItems={items}
           initialCursor={nextCursor}
           filters={filters}
