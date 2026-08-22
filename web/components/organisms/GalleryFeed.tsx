@@ -1,22 +1,41 @@
 import { Gallery } from "@/components/organisms/Gallery";
-import { getItems } from "@/lib/queries";
+import { FilterBar } from "@/components/organisms/FilterBar";
+import { getFilterOptions, getItems } from "@/lib/queries";
+import type { GalleryFilters } from "@/lib/types";
 
 type GalleryFeedProps = {
-  type?: "image" | "video";
-  tag?: string;
+  filters?: GalleryFilters;
+  /** The /images and /videos routes pin one media type and hide its pills. */
+  showFilters?: boolean;
 };
 
 // Server component shared by /, /images, /videos and /tag/[tag].
-// Fetches the first page; Gallery handles pagination with the same filter.
-export async function GalleryFeed({ type, tag }: GalleryFeedProps) {
-  const { items, nextCursor } = await getItems({ limit: 12, type, tag });
+// Fetches the first page already narrowed down; Gallery paginates with the
+// same filters, so scrolling never widens what was asked for.
+export async function GalleryFeed({
+  filters = {},
+  showFilters = true,
+}: GalleryFeedProps) {
+  const [{ items, nextCursor }, options] = await Promise.all([
+    getItems({ limit: 12, ...filters }),
+    showFilters ? getFilterOptions() : Promise.resolve(null),
+  ]);
 
   return (
-    <Gallery
-      initialItems={items}
-      initialCursor={nextCursor}
-      type={type}
-      tag={tag}
-    />
+    <>
+      {options && <FilterBar options={options} active={filters} />}
+
+      {items.length === 0 ? (
+        <p className="py-16 text-center text-sm text-foreground/60">
+          Aucun résultat pour ces filtres.
+        </p>
+      ) : (
+        <Gallery
+          initialItems={items}
+          initialCursor={nextCursor}
+          filters={filters}
+        />
+      )}
+    </>
   );
 }

@@ -45,6 +45,9 @@ export const siteConfig = {
   },
 
   // Les onglets du menu, dans l'ordre d'affichage.
+  // Images et Vidéos sont devenus des pills au-dessus de la grille, où ils
+  // se combinent avec les autres filtres ; les garder aussi ici donnerait
+  // deux endroits pour la même chose. Les pages existent toujours.
   // - label : le texte affiché (modifiable librement)
   // - href  : la page vers laquelle l'onglet pointe (ne pas changer)
   // - icon  : le nom de l'icône (voir la liste plus haut)
@@ -52,8 +55,8 @@ export const siteConfig = {
   // Pour le réafficher : enlève le //.
   nav: [
     { href: "/", label: "Découvrir", icon: "discover" },
-    { href: "/images", label: "Images", icon: "images" },
-    { href: "/videos", label: "Vidéos", icon: "videos" },
+    // { href: "/images", label: "Images", icon: "images" },
+    // { href: "/videos", label: "Vidéos", icon: "videos" },
     // { href: "/saved", label: "Enregistrés", icon: "saved" },
     // { href: "/about", label: "À propos", icon: "about" },
   ],

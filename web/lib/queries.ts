@@ -1,7 +1,14 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { Agent, fetch as undiciFetch } from "undici";
 import { revalidatePath } from "next/cache";
-import type { Brand, Item, ItemsPage, ProjectType } from "./types";
+import type {
+  Brand,
+  FilterOptions,
+  GalleryFilters,
+  Item,
+  ItemsPage,
+  ProjectType,
+} from "./types";
 
 // Force IPv4: this machine has no IPv6 route and Node's dual-stack
 // auto-selection hangs on Neon's endpoints instead of falling back.
@@ -12,11 +19,9 @@ neonConfig.fetchFunction = (url: string, init: Record<string, unknown>) =>
 
 const sql = neon(process.env.DATABASE_URL!);
 
-type GetItemsOptions = {
+type GetItemsOptions = GalleryFilters & {
   limit?: number;
   cursor?: string | null; // created_at of the last item on the previous page
-  tag?: string | null;
-  type?: "image" | "video" | null;
 };
 
 export async function getItems({
@@ -24,18 +29,29 @@ export async function getItems({
   cursor = null,
   tag = null,
   type = null,
+  projectType = null,
+  brand = null,
+  city = null,
 }: GetItemsOptions = {}): Promise<ItemsPage> {
   // Fetch one extra row to know whether there is a next page.
   // status is not a filter the caller may relax: everything reachable from
   // the public site goes through here, so a draft or an unpublished item can
   // never leak by passing an unexpected argument.
+  // Every filter is written as "null means don't filter", so one query
+  // serves all combinations. Filtering in SQL rather than in the client is
+  // what makes it work with infinite scroll: otherwise only the twelve items
+  // already loaded would be narrowed down.
   const rows = (await sql`
-    select * from items
-    where status = 'published'
-      and (${cursor}::timestamptz is null or created_at < ${cursor})
-      and (${tag}::text is null or ${tag} = any(tags))
-      and (${type}::text is null or type = ${type})
-    order by created_at desc
+    select i.* from items i
+    left join brands b on b.id = i.brand_id
+    where i.status = 'published'
+      and (${cursor}::timestamptz is null or i.created_at < ${cursor})
+      and (${tag}::text is null or ${tag} = any(i.tags))
+      and (${type}::text is null or i.type = ${type})
+      and (${projectType}::text is null or i.project_type = ${projectType})
+      and (${brand}::text is null or b.slug = ${brand})
+      and (${city}::text is null or i.city = ${city})
+    order by i.created_at desc
     limit ${limit + 1}
   `) as Item[];
 
@@ -227,4 +243,47 @@ export async function markForRetry(id: string) {
 export function revalidateGallery(itemId?: string) {
   for (const path of ["/", "/images", "/videos"]) revalidatePath(path);
   if (itemId) revalidatePath(`/item/${itemId}`);
+}
+
+// --- options de filtrage --------------------------------------------------
+
+// Only what actually has published content, with its count. A filter that
+// would return nothing should not be offered — and the counts tell the
+// visitor what's worth clicking before they click it.
+export async function getFilterOptions(): Promise<FilterOptions> {
+  const [brands, cities, projectTypes, types] = await Promise.all([
+    sql`
+      select b.slug, b.name, count(*)::int as count
+      from items i join brands b on b.id = i.brand_id
+      where i.status = 'published'
+      group by b.slug, b.name
+      order by count desc, b.name
+    `,
+    sql`
+      select city, count(*)::int as count
+      from items
+      where status = 'published' and city is not null
+      group by city
+      order by count desc, city
+    `,
+    sql`
+      select project_type as value, count(*)::int as count
+      from items
+      where status = 'published' and project_type is not null
+      group by project_type
+    `,
+    sql`
+      select type as value, count(*)::int as count
+      from items
+      where status = 'published'
+      group by type
+    `,
+  ]);
+
+  return {
+    brands: brands as FilterOptions["brands"],
+    cities: cities as FilterOptions["cities"],
+    projectTypes: projectTypes as FilterOptions["projectTypes"],
+    types: types as FilterOptions["types"],
+  };
 }

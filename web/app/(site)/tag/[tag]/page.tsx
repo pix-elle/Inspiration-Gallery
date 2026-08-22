@@ -26,7 +26,7 @@ export default async function TagPage({ params }: Props) {
           Clear ×
         </Link>
       </div>
-      <GalleryFeed tag={tag} />
+      <GalleryFeed filters={{ tag }} showFilters={false} />
     </div>
   );
 }

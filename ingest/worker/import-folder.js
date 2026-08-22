@@ -29,6 +29,7 @@ import { basename, extname, join, relative } from "node:path";
 import { nanoid } from "nanoid";
 import { env, useR2 } from "../lib/env.js";
 import { processMedia, isVideoExt, MEDIA_EXT } from "../lib/pipeline.js";
+import { readLocation } from "../lib/geo.js";
 import { insertItem, existingImportKeys, findOrCreateBrand } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
 
@@ -241,6 +242,10 @@ for (const [i, f] of todo.entries()) {
       importKey: f.importKey,
       projectType: flags.projectType,
       brandId,
+      // Where it was shot is already in the file. The city label comes later,
+      // in a separate pass: geocoding is a network call and has no business
+      // making an import fail.
+      ...((await readLocation(f.path)) ?? {}),
       ...media,
     });
 

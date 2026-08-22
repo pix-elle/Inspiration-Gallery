@@ -6,5 +6,5 @@ export const revalidate = 300;
 export const metadata: Metadata = { title: "Images" };
 
 export default function ImagesPage() {
-  return <GalleryFeed type="image" />;
+  return <GalleryFeed filters={{ type: "image" }} showFilters={false} />;
 }

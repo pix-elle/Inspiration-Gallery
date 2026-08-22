@@ -17,14 +17,15 @@ export async function insertItem(row) {
       (id, type, title, description, tags, category, creator, source_url,
        width, height, dominant_color, blur_data_url,
        poster_url, image_base, video_url, video_av1_url, import_key,
-       project_type, brand_id, status)
+       project_type, brand_id, status, latitude, longitude)
     values
       (${row.id}, ${row.type}, ${row.title}, ${row.description}, ${row.tags},
        ${row.category}, ${row.creator}, ${row.sourceUrl},
        ${row.width}, ${row.height}, ${row.dominantColor}, ${row.blurDataUrl},
        ${row.posterUrl}, ${row.imageBase}, ${row.videoUrl}, ${row.videoAv1Url},
        ${row.importKey ?? null},
-       ${row.projectType ?? null}, ${row.brandId ?? null}, 'published')
+       ${row.projectType ?? null}, ${row.brandId ?? null}, 'published',
+       ${row.latitude ?? null}, ${row.longitude ?? null})
   `;
 }
 
@@ -78,6 +79,8 @@ export async function getItemForProcessing(id) {
 export async function publishProcessedItem(id, media) {
   await sql`
     update items set
+      latitude       = coalesce(${media.latitude ?? null}, latitude),
+      longitude      = coalesce(${media.longitude ?? null}, longitude),
       type           = ${media.type},
       width          = ${media.width},
       height         = ${media.height},
@@ -101,4 +104,33 @@ export async function failItem(id, message) {
            updated_at = now()
      where id = ${id}
   `;
+}
+
+// --- localisation ---------------------------------------------------------
+
+// Les lignes qui ont des coordonnées mais pas encore de ville.
+export async function itemsAwaitingCity() {
+  return sql`
+    select id, latitude, longitude from items
+    where latitude is not null and city is null
+  `;
+}
+
+export async function setCity(id, city, country) {
+  await sql`
+    update items set city = ${city}, country = ${country}, updated_at = now()
+    where id = ${id}
+  `;
+}
+
+// Rattrapage : on retrouve la ligne par l'empreinte du fichier local, la même
+// qui sert déjà d'anti-doublon. Aucun besoin de retélécharger quoi que ce soit.
+export async function setLocationByImportKey(importKey, latitude, longitude) {
+  const rows = await sql`
+    update items set latitude = ${latitude}, longitude = ${longitude},
+                     updated_at = now()
+    where import_key = ${importKey} and latitude is null
+    returning id
+  `;
+  return rows.length > 0;
 }

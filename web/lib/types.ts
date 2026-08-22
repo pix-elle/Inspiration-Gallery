@@ -25,6 +25,29 @@ export type Item = {
   brand_id: string | null;
   source_key: string | null; // the untouched original kept on R2
   updated_at: string;
+
+  // Where it was shot, read from the file's own metadata at import time.
+  latitude: number | null;
+  longitude: number | null;
+  city: string | null;
+  country: string | null;
+};
+
+// What the gallery can be narrowed by. All optional, all combinable, all
+// carried in the URL so a filtered view can be shared.
+export type GalleryFilters = {
+  type?: "image" | "video" | null;
+  tag?: string | null;
+  projectType?: ProjectType | null;
+  brand?: string | null; // slug
+  city?: string | null;
+};
+
+export type FilterOptions = {
+  brands: { slug: string; name: string; count: number }[];
+  cities: { city: string; count: number }[];
+  projectTypes: { value: ProjectType; count: number }[];
+  types: { value: "image" | "video"; count: number }[];
 };
 
 // processing → the Actions runner is encoding it; failed carries `error`.

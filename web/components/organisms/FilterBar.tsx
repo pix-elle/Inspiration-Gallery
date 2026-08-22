@@ -1,0 +1,265 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check, ChevronDown, X } from "lucide-react";
+import type { FilterOptions, GalleryFilters } from "@/lib/types";
+
+// Sits above the grid rather than in the sidebar. A filter acts on the grid,
+// so putting it there makes the link obvious; on the left it would read as
+// navigation. It also survives below 768px, where the sidebar is hidden and
+// where people sort the most.
+//
+// Everything lives in the URL: a narrowed view is shareable, the back button
+// works, and the filtering happens in SQL rather than over the twelve items
+// that happen to be loaded.
+
+const PROJECT_LABELS: Record<string, string> = {
+  popup: "Pop-up",
+  store: "Boutique",
+};
+const TYPE_LABELS: Record<string, string> = {
+  image: "Images",
+  video: "Vidéos",
+};
+
+type Props = { options: FilterOptions; active: GalleryFilters };
+
+export function FilterBar({ options, active }: Props) {
+  const router = useRouter();
+  const params = useSearchParams();
+
+  // Toggling: clicking the active value clears it, which is what a pill that
+  // looks pressed should do.
+  function apply(key: string, value: string | null) {
+    const next = new URLSearchParams(params.toString());
+    if (!value || next.get(key) === value) next.delete(key);
+    else next.set(key, value);
+    const query = next.toString();
+    router.push(query ? `/?${query}` : "/", { scroll: false });
+  }
+
+  function clearAll() {
+    router.push("/", { scroll: false });
+  }
+
+  const activeCount = [
+    active.type,
+    active.projectType,
+    active.brand,
+    active.city,
+  ].filter(Boolean).length;
+
+  const brandName =
+    options.brands.find((b) => b.slug === active.brand)?.name ?? null;
+
+  return (
+    <div className="sticky top-0 z-20 -mx-4 mb-4 bg-background/85 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+      {/* Horizontal scroll rather than wrapping: on a phone the bar stays one
+          line high instead of eating a third of the screen. */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {options.types.map(({ value, count }) => (
+          <Pill
+            key={value}
+            active={active.type === value}
+            onClick={() => apply("type", value)}
+          >
+            {TYPE_LABELS[value]}
+            <Count n={count} />
+          </Pill>
+        ))}
+
+        {options.projectTypes.length > 0 && <Separator />}
+
+        {options.projectTypes.map(({ value, count }) => (
+          <Pill
+            key={value}
+            active={active.projectType === value}
+            onClick={() => apply("projet", value)}
+          >
+            {PROJECT_LABELS[value]}
+            <Count n={count} />
+          </Pill>
+        ))}
+
+        {(options.brands.length > 0 || options.cities.length > 0) && (
+          <Separator />
+        )}
+
+        {/* Brands and cities are dropdowns, not pills: there are thirty of the
+            first and they would make an unreadable second row. */}
+        {options.brands.length > 0 && (
+          <Dropdown
+            label="Marque"
+            selected={brandName}
+            searchable
+            items={options.brands.map((b) => ({
+              value: b.slug,
+              label: b.name,
+              count: b.count,
+            }))}
+            activeValue={active.brand ?? null}
+            onSelect={(v) => apply("marque", v)}
+          />
+        )}
+
+        {options.cities.length > 0 && (
+          <Dropdown
+            label="Lieu"
+            selected={active.city ?? null}
+            items={options.cities.map((c) => ({
+              value: c.city,
+              label: c.city,
+              count: c.count,
+            }))}
+            activeValue={active.city ?? null}
+            onSelect={(v) => apply("lieu", v)}
+          />
+        )}
+
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="ml-1 flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm text-foreground/60 transition-colors hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Tout effacer
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Separator() {
+  return <span className="h-5 w-px shrink-0 bg-foreground/15" aria-hidden />;
+}
+
+function Count({ n }: { n: number }) {
+  return <span className="ml-1.5 text-xs tabular-nums opacity-50">{n}</span>;
+}
+
+function Pill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors ${
+        active
+          ? "border-foreground bg-foreground text-background"
+          : "border-foreground/15 text-foreground/70 hover:border-foreground/40 hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+type DropdownItem = { value: string; label: string; count: number };
+
+function Dropdown({
+  label,
+  selected,
+  items,
+  activeValue,
+  onSelect,
+  searchable = false,
+}: {
+  label: string;
+  selected: string | null;
+  items: DropdownItem[];
+  activeValue: string | null;
+  onSelect: (value: string) => void;
+  searchable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const shown = query
+    ? items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
+    : items;
+
+  return (
+    <div ref={box} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors ${
+          selected
+            ? "border-foreground bg-foreground text-background"
+            : "border-foreground/15 text-foreground/70 hover:border-foreground/40 hover:text-foreground"
+        }`}
+      >
+        {selected ?? label}
+        <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1.5 max-h-72 w-56 overflow-y-auto rounded-lg border border-foreground/15 bg-background p-1 shadow-xl">
+          {searchable && (
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher…"
+              className="mb-1 w-full rounded-md bg-foreground/5 px-2 py-1.5 text-sm outline-none"
+            />
+          )}
+          {shown.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => {
+                onSelect(item.value);
+                setOpen(false);
+                setQuery("");
+              }}
+              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-foreground/5"
+            >
+              <span className="flex min-w-0 items-center gap-1.5">
+                {activeValue === item.value && (
+                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                )}
+                <span className="truncate">{item.label}</span>
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-foreground/40">
+                {item.count}
+              </span>
+            </button>
+          ))}
+          {shown.length === 0 && (
+            <p className="px-2 py-3 text-center text-sm text-foreground/50">
+              Aucun résultat
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

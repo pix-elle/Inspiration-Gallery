@@ -6,5 +6,5 @@ export const revalidate = 300;
 export const metadata: Metadata = { title: "Videos" };
 
 export default function VideosPage() {
-  return <GalleryFeed type="video" />;
+  return <GalleryFeed filters={{ type: "video" }} showFilters={false} />;
 }

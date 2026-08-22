@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import type { Item, ItemsPage } from "@/lib/types";
+import type { GalleryFilters, Item, ItemsPage } from "@/lib/types";
 import { distribute } from "@/lib/masonry";
 import { bestWidth } from "@/lib/media";
 import { GalleryItem } from "./GalleryItem";
@@ -45,11 +45,14 @@ function useColumnCount() {
 type GalleryProps = {
   initialItems: Item[];
   initialCursor: string | null;
-  type?: "image" | "video";
-  tag?: string;
+  filters?: GalleryFilters;
 };
 
-export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps) {
+export function Gallery({
+  initialItems,
+  initialCursor,
+  filters = {},
+}: GalleryProps) {
   const columnCount = useColumnCount();
   const [items, setItems] = useState(initialItems);
   const [cursor, setCursor] = useState(initialCursor);
@@ -170,8 +173,13 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
     setLoading(true);
     try {
       const params = new URLSearchParams({ cursor });
-      if (type) params.set("type", type);
-      if (tag) params.set("tag", tag);
+      // The next page must carry the same filters as the first, otherwise
+      // scrolling quietly widens the selection.
+      if (filters.type) params.set("type", filters.type);
+      if (filters.tag) params.set("tag", filters.tag);
+      if (filters.projectType) params.set("projet", filters.projectType);
+      if (filters.brand) params.set("marque", filters.brand);
+      if (filters.city) params.set("lieu", filters.city);
       const res = await fetch(`/api/items?${params}`);
       const page: ItemsPage = await res.json();
       setItems((prev) => [...prev, ...page.items]);
@@ -180,7 +188,7 @@ export function Gallery({ initialItems, initialCursor, type, tag }: GalleryProps
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [cursor, type, tag]);
+  }, [cursor, filters]);
 
   // Browsing the lightbox near the end of the loaded list pulls the next
   // page in the background, so "next" rarely hits a wall.

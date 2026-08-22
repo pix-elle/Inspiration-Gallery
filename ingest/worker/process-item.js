@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join, extname } from "node:path";
 import { env, useR2 } from "../lib/env.js";
 import { processMedia } from "../lib/pipeline.js";
+import { readLocation } from "../lib/geo.js";
 import { fetchObject, storageMode } from "../lib/storage.js";
 import {
   getItemForProcessing,
@@ -62,7 +63,9 @@ try {
   console.log(`  source récupérée (${(buffer.length / 1e6).toFixed(1)} Mo, ${ext})`);
 
   const media = await processMedia(tmpPath, id, ext);
-  await publishProcessedItem(id, media);
+  // Read from the original, not the re-encode: ffmpeg drops the location tag.
+  const location = await readLocation(tmpPath);
+  await publishProcessedItem(id, { ...media, ...location });
 
   console.log(`  ✓ publié — ${media.width}x${media.height}, ${media.dominantColor}`);
 } catch (err) {
