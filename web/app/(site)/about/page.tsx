@@ -1,10 +1,16 @@
 export default function AboutPage() {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 text-center">
-      <h1 className="text-lg font-semibold">About</h1>
-      <p className="max-w-md text-sm text-foreground/60">
-        A curated gallery of design inspiration — hand-picked images and videos,
-        optimized to load fast. More soon.
+    <div className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center gap-3">
+      <h1 className="text-lg font-semibold">À propos</h1>
+      <p className="text-sm leading-relaxed text-foreground/60">
+        Une galerie d&apos;inspiration en architecture retail : vitrines,
+        pop-ups et aménagements de boutiques, repérés sur le terrain puis
+        filmés et photographiés.
+      </p>
+      <p className="text-sm leading-relaxed text-foreground/60">
+        Chaque projet est classé par marque, par type — pop-up ou boutique —
+        et par ville, pour retrouver ce qui se fait ailleurs avant de dessiner
+        ce qui se fera ici.
       </p>
     </div>
   );

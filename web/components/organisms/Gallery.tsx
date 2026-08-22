@@ -211,9 +211,9 @@ export function Gallery({
   if (items.length === 0) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-1 text-center">
-        <p className="text-sm font-medium">Nothing here yet</p>
+        <p className="text-sm font-medium">Rien à afficher pour l&apos;instant</p>
         <p className="text-sm text-foreground/60">
-          New inspiration is added regularly — check back soon.
+          De nouveaux repérages sont ajoutés régulièrement — revenez bientôt.
         </p>
       </div>
     );

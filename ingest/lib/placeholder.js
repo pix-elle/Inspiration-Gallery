@@ -8,8 +8,11 @@ export async function dominantColor(input) {
 }
 
 // Tiny ~20px blurred base64 preview for the blur-up effect.
+// .rotate() for the same reason as in image.js: without it the placeholder is
+// turned a quarter-turn away from the photo it stands in for.
 export async function blurDataUrl(input) {
   const buf = await sharp(input)
+    .rotate()
     .resize(20, 20, { fit: "inside" })
     .webp({ quality: 40 })
     .toBuffer();

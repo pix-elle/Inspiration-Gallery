@@ -4,6 +4,7 @@ import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { Sidebar } from "@/components/organisms/Sidebar";
 import { SubscribeModal } from "@/components/organisms/SubscribeModal";
 import { getSettings, isOn } from "@/lib/settings";
+import { EditModeProvider } from "@/components/organisms/EditMode";
 
 export async function AppShell({ children }: { children: ReactNode }) {
   // Read once here and passed down: the copy is editable from /admin, and a
@@ -12,7 +13,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
   const settings = await getSettings();
 
   return (
-    <div className="min-h-dvh">
+    <EditModeProvider>
+      <div className="min-h-dvh">
       {/* Desktop: fixed left sidebar */}
       <Sidebar settings={settings} />
       {/* Mobile: slim top bar instead of the sidebar */}
@@ -30,7 +32,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
         title={settings.newsletterPopupTitle}
         successMessage={settings.newsletterPopupSuccess}
         buttonLabel={settings.subscribeButtonLabelShort}
-      />
-    </div>
+        />
+      </div>
+    </EditModeProvider>
   );
 }

@@ -24,14 +24,15 @@ export const SETTING_DEFAULTS = {
   newsletterPopupEnabled: "false",
   newsletterPopupDelaySeconds: "8",
   newsletterPopupTitle:
-    "L'inspiration vidéo SaaS qui performe, chaque semaine dans votre inbox",
+    "Les vitrines, pop-ups et boutiques qui marquent — chaque semaine dans votre boîte mail",
   newsletterPopupSuccess: "C'est noté — premier envoi la semaine prochaine ✦",
   sidebarNewsletterTitle: "La newsletter",
   sidebarNewsletterText:
-    "L'inspiration vidéo SaaS qui performe, chaque semaine directement dans votre inbox.",
+    "Une sélection de vitrines, pop-ups et aménagements repérés sur le terrain, chaque semaine dans votre boîte mail.",
   subscribeButtonLabel: "Recevoir la newsletter",
   subscribeButtonLabelShort: "S'abonner",
-  siteDescription: "A curated gallery of design inspiration — images and videos.",
+  siteDescription:
+    "Une galerie d'inspiration en architecture retail : vitrines, pop-ups et aménagements de boutiques, filmés et photographiés sur le terrain.",
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

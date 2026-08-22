@@ -134,3 +134,20 @@ export async function setLocationByImportKey(importKey, latitude, longitude) {
   `;
   return rows.length > 0;
 }
+
+export async function itemByImportKey(importKey) {
+  const rows = await sql`select id, width, height from items where import_key = ${importKey}`;
+  return rows[0] ?? null;
+}
+
+// Après régénération des variantes : les dimensions sont celles de l'image
+// affichée, orientation appliquée.
+export async function updateItemImage(id, { width, height, dominantColor, blurDataUrl }) {
+  await sql`
+    update items set
+      width = ${width}, height = ${height},
+      dominant_color = ${dominantColor}, blur_data_url = ${blurDataUrl},
+      updated_at = now()
+    where id = ${id}
+  `;
+}

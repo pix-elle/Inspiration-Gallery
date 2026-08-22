@@ -3,6 +3,7 @@ import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { SidebarNav } from "@/components/molecules/SidebarNav";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 import { siteConfig } from "@/site.config";
+import { EditableText } from "@/components/organisms/EditMode";
 import type { Settings } from "@/lib/settings";
 
 export function Sidebar({ settings }: { settings: Settings }) {
@@ -23,10 +24,18 @@ export function Sidebar({ settings }: { settings: Settings }) {
               <rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.5" />
               <path d="m2.5 4.5 5.5 4.25L13.5 4.5" />
             </svg>
-            {settings.sidebarNewsletterTitle}
+            <EditableText
+              settingKey="sidebarNewsletterTitle"
+              value={settings.sidebarNewsletterTitle}
+            />
           </h2>
           <p className="text-xs leading-relaxed text-foreground/60">
-            {settings.sidebarNewsletterText}
+            <EditableText
+              settingKey="sidebarNewsletterText"
+              value={settings.sidebarNewsletterText}
+              multiline
+              className="text-xs leading-relaxed"
+            />
           </p>
         </div>
         <SubscribeButton
@@ -53,6 +62,19 @@ export function Sidebar({ settings }: { settings: Settings }) {
                 <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="3.5" />
                 <circle cx="8" cy="8" r="2.9" />
                 <circle cx="11.7" cy="4.3" r="0.4" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
+          )}
+          {siteConfig.socials.linkedin && (
+            <a
+              href={siteConfig.socials.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              className="text-foreground/60 transition-colors hover:text-foreground"
+            >
+              <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                <path d="M13.6 0H2.4A2.4 2.4 0 0 0 0 2.4v11.2A2.4 2.4 0 0 0 2.4 16h11.2a2.4 2.4 0 0 0 2.4-2.4V2.4A2.4 2.4 0 0 0 13.6 0ZM5 13.4H2.9V6.2H5v7.2Zm-1-8.2a1.2 1.2 0 1 1 0-2.5 1.2 1.2 0 0 1 0 2.5Zm9.1 8.2H11V9.6c0-.9-.3-1.5-1.1-1.5-.6 0-1 .4-1.1 .8-.1.2-.1.4-.1.6v3.9H6.6V6.2h2.1v1a2.1 2.1 0 0 1 1.9-1c1.4 0 2.5.9 2.5 2.9v4.3Z" />
               </svg>
             </a>
           )}

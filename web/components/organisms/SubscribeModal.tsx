@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { OPEN_SUBSCRIBE_EVENT } from "@/components/atoms/SubscribeButton";
+import { EditableText, useEditMode } from "@/components/organisms/EditMode";
 import type { Item } from "@/lib/types";
 
 const DISMISSED_KEY = "newsletter-dismissed";
@@ -23,7 +24,7 @@ type Props = {
 };
 
 // Lead-capture modal: shows once per visitor after a short while on the
-// site, teasing the weekly SaaS video inspiration newsletter. The teaser
+// site, teasing the weekly retail-design newsletter. The teaser
 // video is the freshest video item, fetched from the (edge-cached) API.
 // Also opens on demand when a SubscribeButton fires OPEN_SUBSCRIBE_EVENT.
 export function SubscribeModal({
@@ -33,6 +34,7 @@ export function SubscribeModal({
   successMessage,
   buttonLabel,
 }: Props) {
+  const { editing } = useEditMode();
   const [video, setVideo] = useState<Item | null>(null);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -89,7 +91,14 @@ export function SubscribeModal({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Escape inside a field means "abandon what I typed", not "close the
+      // modal I'm editing".
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      dismiss();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,7 +140,9 @@ export function SubscribeModal({
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      onClick={dismiss}
+      // While editing, a stray click outside must not throw away the pop-up
+      // being worked on.
+      onClick={editing ? undefined : dismiss}
       role="dialog"
       aria-modal="true"
       aria-label="S'abonner à la newsletter"
@@ -172,12 +183,21 @@ export function SubscribeModal({
         )}
 
         <h2 className="text-center text-lg font-semibold leading-snug">
-          {title}
+          <EditableText
+            settingKey="newsletterPopupTitle"
+            value={title}
+            multiline
+            className="text-center text-lg font-semibold leading-snug text-neutral-900"
+          />
         </h2>
 
         {status === "done" ? (
           <p className="pb-1 text-center text-sm text-neutral-600">
-            {successMessage}
+            <EditableText
+              settingKey="newsletterPopupSuccess"
+              value={successMessage}
+              className="text-center text-sm text-neutral-600"
+            />
           </p>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-2">

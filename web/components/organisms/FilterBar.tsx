@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, X } from "lucide-react";
 import { ICONS } from "@/components/atoms/icons/nav";
@@ -194,29 +195,62 @@ function Dropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const box = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+
+  // The pill row scrolls horizontally on narrow screens, and a scrolling
+  // container clips whatever leaves it — which is what hid this menu. So the
+  // panel is rendered into <body> and positioned from the trigger's box,
+  // where no ancestor can crop it.
+  const place = useCallback(() => {
+    const r = trigger.current?.getBoundingClientRect();
+    if (!r) return;
+    const width = 224; // w-56
+    setAt({
+      top: r.bottom + 6,
+      // Kept inside the viewport: near the right edge the menu flips to align
+      // on the trigger's right rather than hanging off screen.
+      left: Math.min(r.left, window.innerWidth - width - 8),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (trigger.current?.contains(target) || panel.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    // Following the trigger beats freezing the menu in place when the page
+    // scrolls under it.
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
-  }, [open]);
+  }, [open, place]);
 
   const shown = query
     ? items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
     : items;
 
   return (
-    <div ref={box} className="relative shrink-0">
+    <div className="relative shrink-0">
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
@@ -230,8 +264,13 @@ function Dropdown({
         <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 max-h-72 w-56 overflow-y-auto rounded-lg border border-foreground/15 bg-background p-1 shadow-xl">
+      {open &&
+        at &&
+        createPortal(
+          <div
+            ref={panel}
+            style={{ top: at.top, left: at.left }}
+            className="fixed z-[80] max-h-72 w-56 overflow-y-auto rounded-lg border border-foreground/15 bg-background p-1 shadow-xl">
           {searchable && (
             <input
               autoFocus
@@ -268,8 +307,9 @@ function Dropdown({
               Aucun résultat
             </p>
           )}
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

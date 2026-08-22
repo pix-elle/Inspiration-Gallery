@@ -12,7 +12,11 @@ type NavLinkProps = {
 
 export function NavLink({ href, label, icon }: NavLinkProps) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  // Opening a tile pushes /item/<id> so the view can be shared, but the
+  // lightbox is an overlay on the gallery — the visitor never left it. Without
+  // this, the tab underneath goes dark while its own page is still on screen.
+  const isActive =
+    pathname === href || (href === "/" && pathname.startsWith("/item/"));
 
   return (
     <Link

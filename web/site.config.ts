@@ -34,14 +34,18 @@ export const siteConfig = {
   logoIsWordmark: true,
 
   // Description du site (Google, partages sur les réseaux…)
-  description: "A curated gallery of design inspiration — images and videos.",
+  description:
+    "Une galerie d'inspiration en architecture retail : vitrines, pop-ups et aménagements de boutiques.",
 
   // Réseaux sociaux (liens en bas de la sidebar).
   // Remplace par tes vrais comptes. Pour masquer une icône,
-  // remplace son lien par null (ex.  instagram: null).
+  // remplace son lien par null (ex.  instagram: null) — c'est pour
+  // ça que linkedin est à null : l'icône n'apparaîtra qu'une fois
+  // l'adresse du compte renseignée, plutôt que de pointer dans le vide.
   socials: {
     instagram: "https://www.instagram.com/motioon.collective" as string | null,
     twitter: "https://x.com/motioon.collective" as string | null,
+    linkedin: null as string | null,
   },
 
   // Les onglets du menu, dans l'ordre d'affichage.
