@@ -87,13 +87,16 @@ let failed = 0;
 
 for (const [i, file] of suspects.entries()) {
   const name = file.split("/").pop();
-  const item = await itemByImportKey(`sha256:${await sha256(file)}`);
-  if (!item) {
-    absent++;
-    continue;
-  }
 
   try {
+    // Inside the try: this is a network call to the database, and a blip on
+    // one file must not abandon the other 182.
+    const item = await itemByImportKey(`sha256:${await sha256(file)}`);
+    if (!item) {
+      absent++;
+      continue;
+    }
+
     // Same id, so the variants overwrite the wrong ones in place — no orphan
     // files, and no change to any URL already in the database.
     const img = await processImage(file, item.id);
