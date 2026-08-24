@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UploadForm } from "./UploadForm";
 import { ItemRow } from "./ItemRow";
 import { BulkBar } from "./BulkBar";
+import {
+  AdminFilters,
+  EMPTY_FILTERS,
+  applyFilters,
+  isFiltering,
+  type Filters,
+} from "./AdminFilters";
 import type { Brand, Item } from "@/lib/types";
 
 type Props = { initialItems: Item[]; initialBrands: Brand[] };
@@ -12,6 +19,7 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
   const [items, setItems] = useState(initialItems);
   const [brands, setBrands] = useState(initialBrands);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   // Ancre du shift-clic : l'index de la dernière case cliquée seule.
   const anchor = useRef<number | null>(null);
 
@@ -40,10 +48,25 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
 
   const online = items.filter((i) => i.status === "published").length;
 
+  // Source de vérité unique : la table, « tout cocher » et la barre de lot
+  // lisent tous `filtered`. C'est ce qui garantit qu'on n'agit jamais sur une
+  // ligne qu'on ne voit pas — et ce qui permettra de brancher une pagination
+  // sans revoir la sélection.
+  const filtered = useMemo(() => applyFilters(items, filters), [items, filters]);
+
   const selected = useMemo(
-    () => items.filter((i) => selectedIds.has(i.id)),
-    [items, selectedIds]
+    () => filtered.filter((i) => selectedIds.has(i.id)),
+    [filtered, selectedIds]
   );
+
+  // Changer un filtre vide la sélection. Garder des lignes cochées qui
+  // sortent du champ visible rendrait possible une suppression en lot sur des
+  // éléments qu'on ne voit plus — l'erreur qu'on ne rattrape pas.
+  const changeFilters = useCallback((patch: Partial<Filters>) => {
+    setFilters((f) => ({ ...f, ...patch }));
+    setSelectedIds(new Set());
+    anchor.current = null;
+  }, []);
 
   // Le shift-clic étend depuis l'ancre jusqu'à la ligne cliquée, dans le sens
   // de l'action en cours : on coche toute la plage, ou on la décoche.
@@ -51,13 +74,15 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
     (index: number, shiftKey: boolean) => {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        const id = items[index].id;
+        const id = filtered[index].id;
         const adding = !prev.has(id);
         if (shiftKey && anchor.current !== null) {
+          // La plage suit l'ordre affiché, pas l'ordre source : sous filtre,
+          // « de celle-ci à celle-là » ne peut vouloir dire que ce qu'on voit.
           const [from, to] = [anchor.current, index].sort((a, b) => a - b);
           for (let i = from; i <= to; i++) {
-            if (adding) next.add(items[i].id);
-            else next.delete(items[i].id);
+            if (adding) next.add(filtered[i].id);
+            else next.delete(filtered[i].id);
           }
         } else if (adding) {
           next.add(id);
@@ -68,15 +93,15 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
       });
       anchor.current = index;
     },
-    [items]
+    [filtered]
   );
 
   // Bornée aux lignes affichées : le jour où la table sera filtrée ou
   // paginée, « tout cocher » ne doit jamais atteindre l'invisible.
-  const allSelected = items.length > 0 && selectedIds.size === items.length;
+  const allSelected = filtered.length > 0 && selected.length === filtered.length;
   const toggleAll = () => {
     anchor.current = null;
-    setSelectedIds(allSelected ? new Set() : new Set(items.map((i) => i.id)));
+    setSelectedIds(allSelected ? new Set() : new Set(filtered.map((i) => i.id)));
   };
 
   return (
@@ -84,6 +109,15 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
       <UploadForm brands={brands} onDone={refresh} />
 
       <div className="flex flex-col gap-2">
+        <AdminFilters
+          filters={filters}
+          onChange={changeFilters}
+          onReset={() => changeFilters(EMPTY_FILTERS)}
+          brands={brands}
+          shown={filtered.length}
+          total={items.length}
+        />
+
         <p className="text-sm text-foreground/60">
           {items.length} élément{items.length > 1 ? "s" : ""} — {online} en ligne
           {encoding && " · encodage en cours…"}
@@ -102,7 +136,7 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
                       // qu'en JS, aucun attribut HTML ne le porte.
                       if (el) {
                         el.indeterminate =
-                          selectedIds.size > 0 && !allSelected;
+                          selected.length > 0 && !allSelected;
                       }
                     }}
                     onChange={toggleAll}
@@ -119,7 +153,7 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
               </tr>
             </thead>
             <tbody>
-              {items.map((item, index) => (
+              {filtered.map((item, index) => (
                 <ItemRow
                   key={item.id}
                   item={item}
@@ -143,6 +177,12 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
         {items.length === 0 && (
           <p className="py-8 text-center text-sm text-foreground/60">
             Rien pour l&apos;instant. Envoie un premier fichier ci-dessus.
+          </p>
+        )}
+
+        {items.length > 0 && filtered.length === 0 && isFiltering(filters) && (
+          <p className="py-8 text-center text-sm text-foreground/60">
+            Aucun élément ne correspond à ces filtres.
           </p>
         )}
       </div>
