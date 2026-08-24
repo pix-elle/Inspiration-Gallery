@@ -1,6 +1,7 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { Agent, fetch as undiciFetch } from "undici";
 import { revalidatePath } from "next/cache";
+import { slugify } from "./slug";
 import type {
   Brand,
   FilterOptions,
@@ -123,14 +124,7 @@ export async function getBrands(): Promise<Brand[]> {
   return (await sql`select * from brands order by name`) as Brand[];
 }
 
-function slugify(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // « Café » et « Cafe » donnent le même slug
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+
 
 // Alessia peut choisir une marque existante ou en saisir une nouvelle. Le
 // rapprochement se fait sur le slug, pas sur le libellé : « Pop Mart »,
@@ -149,6 +143,74 @@ export async function findOrCreateBrand(name: string): Promise<Brand> {
     returning *
   `) as Brand[];
   return rows[0];
+}
+
+// --- marques, côté gestion ------------------------------------------------
+
+export { slugify };
+
+export type BrandWithCount = Brand & { items: number };
+
+// Le décompte n'est pas cosmétique : on ne renomme pas de la même façon une
+// marque qui porte 34 items et une qui n'en porte aucun.
+export async function getBrandsWithCounts(): Promise<BrandWithCount[]> {
+  return (await sql`
+    select b.*, count(i.id)::int as items
+    from brands b left join items i on i.brand_id = b.id
+    group by b.id
+    order by count(i.id) desc, b.name
+  `) as BrandWithCount[];
+}
+
+/** La marque qui occupe déjà ce libellé ou ce slug, s'il y en a une. */
+export async function findBrandConflict(
+  name: string,
+  slug: string,
+  exceptId: string
+): Promise<Brand | null> {
+  const rows = (await sql`
+    select * from brands
+    where id <> ${exceptId} and (slug = ${slug} or lower(name) = lower(${name}))
+    limit 1
+  `) as Brand[];
+  return rows[0] ?? null;
+}
+
+// Le slug est régénéré avec le libellé : un slug qui ne correspond plus à son
+// nom se voit dans l'URL publique et devient une dette permanente. Une
+// correction de casse seule le laisse inchangé — slugify met en minuscules.
+export async function renameBrand(id: string, name: string): Promise<Brand | null> {
+  const slug = slugify(name);
+  if (!slug) throw new Error("Nom de marque vide");
+  const rows = (await sql`
+    update brands set name = ${name.trim()}, slug = ${slug}
+    where id = ${id} returning *
+  `) as Brand[];
+  return rows[0] ?? null;
+}
+
+// Fusion : les items changent de marque, puis la marque vidée disparaît.
+// Dans cet ordre — l'inverse laisserait les items sans marque le temps de la
+// suppression, et un échec entre les deux les y laisserait pour de bon.
+export async function mergeBrands(fromId: string, intoId: string): Promise<number> {
+  if (fromId === intoId) return 0;
+  const moved = (await sql`
+    update items set brand_id = ${intoId}, updated_at = now()
+    where brand_id = ${fromId}
+    returning id
+  `) as { id: string }[];
+  await sql`delete from brands where id = ${fromId}`;
+  return moved.length;
+}
+
+// brand_id est en "on delete set null" : supprimer une marque ne détruit
+// aucun item, ça les laisse sans marque — et le filtre « sans marque » les
+// retrouve aussitôt.
+export async function deleteBrand(id: string): Promise<number> {
+  const rows = (await sql`delete from brands where id = ${id} returning id`) as {
+    id: string;
+  }[];
+  return rows.length;
 }
 
 // --- items côté back-office ----------------------------------------------

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/dal";
-import { getAdminItems, getBrands } from "@/lib/queries";
+import { getAdminItems, getBrands, getBrandsWithCounts } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 import { AdminTable } from "./AdminTable";
 import { AdminTabs } from "./AdminTabs";
+import { BrandsPanel } from "./BrandsPanel";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata: Metadata = {
@@ -18,9 +19,10 @@ export default async function AdminPage() {
   // The real gate. proxy.ts only redirected on a missing cookie; this is what
   // verifies the signature, the expiry and the allowlist.
   const session = await requireSession();
-  const [items, brands, settings] = await Promise.all([
+  const [items, brands, brandsWithCounts, settings] = await Promise.all([
     getAdminItems(),
     getBrands(),
+    getBrandsWithCounts(),
     getSettings(),
   ]);
 
@@ -43,6 +45,7 @@ export default async function AdminPage() {
 
       <AdminTabs
         medias={<AdminTable initialItems={items} initialBrands={brands} />}
+        marques={<BrandsPanel initialBrands={brandsWithCounts} />}
         textes={<SettingsForm initial={settings} items={items} />}
       />
     </main>

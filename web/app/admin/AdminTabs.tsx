@@ -2,20 +2,30 @@
 
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { Images, Type } from "lucide-react";
+import { Images, Tag, Type } from "lucide-react";
 
 const TABS = [
   { id: "medias", label: "Médias", icon: Images },
+  { id: "marques", label: "Marques", icon: Tag },
   { id: "textes", label: "Textes", icon: Type },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function AdminTabs({ medias, textes }: { medias: ReactNode; textes: ReactNode }) {
+export function AdminTabs({
+  medias,
+  marques,
+  textes,
+}: {
+  medias: ReactNode;
+  marques: ReactNode;
+  textes: ReactNode;
+}) {
   const params = useSearchParams();
-  const [active, setActive] = useState<TabId>(
-    params.get("onglet") === "textes" ? "textes" : "medias"
-  );
+  const [active, setActive] = useState<TabId>(() => {
+    const asked = params.get("onglet");
+    return TABS.some((t) => t.id === asked) ? (asked as TabId) : "medias";
+  });
 
   function select(id: TabId) {
     setActive(id);
@@ -75,7 +85,7 @@ export function AdminTabs({ medias, textes }: { medias: ReactNode; textes: React
           hidden={active !== id}
           className={active === id ? undefined : "hidden"}
         >
-          {id === "medias" ? medias : textes}
+          {id === "medias" ? medias : id === "marques" ? marques : textes}
         </div>
       ))}
     </div>
