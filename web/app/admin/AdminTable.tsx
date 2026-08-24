@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { UploadForm } from "./UploadForm";
+import { Plus, UploadCloud } from "lucide-react";
+import { UploadModal } from "./UploadModal";
 import { ItemRow } from "./ItemRow";
 import { BulkBar } from "./BulkBar";
 import {
@@ -20,6 +21,12 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
   const [brands, setBrands] = useState(initialBrands);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [dropped, setDropped] = useState<File[] | null>(null);
+  // Même compteur d'entrées que dans la modal : dragleave se déclenche en
+  // passant sur un enfant, et la surbrillance clignoterait sans lui.
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
   // Ancre du shift-clic : l'index de la dernière case cliquée seule.
   const anchor = useRef<number | null>(null);
 
@@ -104,11 +111,82 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
     setSelectedIds(allSelected ? new Set() : new Set(filtered.map((i) => i.id)));
   };
 
+  // Un fichier lâché n'importe où dans l'onglet ouvre la modal avec les
+  // fichiers déjà en liste : c'est le geste attendu, et ça ne coûte qu'un
+  // écouteur. Sans preventDefault au niveau de la fenêtre, un fichier lâché
+  // à côté ferait quitter la page au navigateur.
+  useEffect(() => {
+    const swallow = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
+
+  const hasFiles = (e: React.DragEvent) =>
+    [...e.dataTransfer.types].includes("Files");
+
   return (
-    <div className="flex flex-col gap-6">
-      <UploadForm brands={brands} onDone={refresh} />
+    <div
+      className="relative flex flex-col gap-6"
+      onDragEnter={(e) => {
+        if (!hasFiles(e)) return;
+        dragDepth.current += 1;
+        setDragging(true);
+      }}
+      onDragOver={(e) => hasFiles(e) && e.preventDefault()}
+      onDragLeave={() => {
+        dragDepth.current -= 1;
+        if (dragDepth.current <= 0) setDragging(false);
+      }}
+      onDrop={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragging(false);
+        setDropped([...e.dataTransfer.files]);
+        setUploadOpen(true);
+      }}
+    >
+      {dragging && !uploadOpen && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-foreground bg-background/85">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <UploadCloud className="h-5 w-5" aria-hidden />
+            Déposez pour ajouter
+          </p>
+        </div>
+      )}
+
+      {uploadOpen && (
+        <UploadModal
+          brands={brands}
+          initialFiles={dropped}
+          onClose={() => {
+            setUploadOpen(false);
+            setDropped(null);
+          }}
+          onDone={refresh}
+        />
+      )}
 
       <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Médias</h2>
+          <button
+            type="button"
+            onClick={() => {
+              setDropped(null);
+              setUploadOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Ajouter
+          </button>
+        </div>
+
         <AdminFilters
           filters={filters}
           onChange={changeFilters}
@@ -175,9 +253,14 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
         />
 
         {items.length === 0 && (
-          <p className="py-8 text-center text-sm text-foreground/60">
-            Rien pour l&apos;instant. Envoie un premier fichier ci-dessus.
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-foreground/20 py-12 text-center">
+            <UploadCloud className="h-6 w-6 text-foreground/30" aria-hidden />
+            <p className="text-sm font-medium">Rien pour l&apos;instant</p>
+            <p className="max-w-sm text-sm text-foreground/60">
+              Glissez vos vidéos et vos images n&apos;importe où sur cette page,
+              ou cliquez sur <span className="font-medium">Ajouter</span>.
+            </p>
+          </div>
         )}
 
         {items.length > 0 && filtered.length === 0 && isFiltering(filters) && (

@@ -15,20 +15,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const PRESIGN_TTL_SECONDS = 600; // 10 min, enough for a slow connection
 
-// Same list the ingest pipeline accepts, plus HEIC: iPhones shoot in it by
-// default, and ffmpeg decodes it (sharp's prebuilt binary can't).
-export const ACCEPTED_TYPES: Record<string, string> = {
-  "video/mp4": ".mp4",
-  "video/quicktime": ".mov",
-  "video/webm": ".webm",
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/heic": ".heic",
-  "image/heif": ".heic",
-};
-
-export const MAX_UPLOAD_BYTES = 500 * 1000 * 1000; // 500 Mo, comme l'affiche le Finder
+// Définis dans lib/media-limits.ts, qui n'est pas "server-only" : la modal
+// d'ajout en a besoin pour trier les fichiers avant envoi. Réexportés ici pour
+// que les routes qui les importaient déjà n'aient rien à changer.
+export { ACCEPTED_TYPES, MAX_UPLOAD_BYTES } from "./media-limits";
 
 function client(): S3Client {
   const { S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY } = process.env;
