@@ -16,7 +16,10 @@ export default async function HomePage({
   };
 
   const projet = one("projet");
-  const type = one("type");
+  // La galerie ouvre sur les vidéos. L'URL nue ne peut donc plus vouloir dire
+  // « aucun filtre de type » : c'est `all` qui porte ce sens désormais, et
+  // l'onglet Tout de la barre de filtres est ce qui le rend atteignable.
+  const type = one("type") ?? "video";
 
   return (
     <GalleryFeed

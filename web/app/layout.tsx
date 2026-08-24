@@ -14,6 +14,10 @@ const inter = Inter({
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
   return {
+    // Next fabrique les URL de partage à partir de cette base. Sans elle il
+    // retombe sur localhost en développement et sur l'URL .vercel.app en
+    // production, ce qui donne des aperçus pointant à côté du site.
+    metadataBase: new URL(siteConfig.url),
     title: {
       default: siteConfig.name,
       template: `%s · ${siteConfig.name}`,

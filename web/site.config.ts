@@ -33,6 +33,12 @@ export const siteConfig = {
   //  false → petit carré + le nom écrit à côté
   logoIsWordmark: true,
 
+  // Adresse publique du site. Sert à fabriquer les liens absolus des
+  // vignettes de partage (LinkedIn, Instagram, WhatsApp…) : sans elle,
+  // Next ne sait pas sur quel domaine il tourne et les aperçus cassent.
+  // À changer seulement si le site déménage sur une autre adresse.
+  url: "https://inspiration.nexus-studio.ch",
+
   // Description du site (Google, partages sur les réseaux…)
   description:
     "Une galerie d'inspiration en architecture retail : vitrines, pop-ups et aménagements de boutiques.",

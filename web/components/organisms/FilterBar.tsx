@@ -30,19 +30,24 @@ const PROJECT_LABELS: Record<string, string> = {
   store: "Boutique",
 };
 const TYPE_LABELS: Record<string, string> = {
+  all: "Tout",
   image: "Images",
   video: "Vidéos",
 };
 // The same drawings the sidebar used for these two tabs, so moving them into
 // the filter bar doesn't make them look like something new.
 const TYPE_ICONS: Record<string, keyof typeof ICONS> = {
+  all: "discover",
   image: "images",
   video: "videos",
 };
+// Vidéos en tête parce que c'est là qu'on atterrit ; l'ordre du `group by`
+// qui alimente les compteurs, lui, n'est pas garanti.
+const TYPE_ORDER = ["video", "image"] as const;
 // Le paramètre d'URL est en français, le champ du filtre en anglais : la
 // correspondance sert à peindre la pilule avant que le serveur ait répondu.
+// `type` n'y figure pas : ses onglets passent par selectType, pas par apply.
 const FIELD: Record<string, keyof GalleryFilters> = {
-  type: "type",
   projet: "projectType",
   marque: "brand",
   lieu: "city",
@@ -76,16 +81,29 @@ export function FilterBar({ options, active }: Props) {
 
   // Toggling: clicking the active value clears it, which is what a pill that
   // looks pressed should do.
+  // toggle: une pilule pressée qu'on reclique se relâche. Les onglets de type
+  // font exception — c'est un segmented control, il y a toujours exactement
+  // une valeur active.
   const hrefFor = useCallback(
-    (key: string, value: string | null) => {
+    (key: string, value: string | null, toggle = true) => {
       const next = new URLSearchParams(params.toString());
-      if (!value || next.get(key) === value) next.delete(key);
+      if (!value || (toggle && next.get(key) === value)) next.delete(key);
       else next.set(key, value);
       const query = next.toString();
       return query ? `/?${query}` : "/";
     },
     [params]
   );
+
+  function selectType(value: string) {
+    const href = hrefFor("type", value, false);
+    startTransition(() => {
+      applyOptimistic({
+        type: value === "all" ? null : (value as "image" | "video"),
+      });
+      router.push(href, { scroll: false });
+    });
+  }
 
   function apply(key: string, value: string | null) {
     const cleared = !value || params.get(key) === value;
@@ -98,31 +116,44 @@ export function FilterBar({ options, active }: Props) {
     });
   }
 
+  // L'onglet de type n'est pas un filtre qu'on retire : « Tout effacer » ne
+  // doit pas basculer sur un autre média que celui qu'on est en train de
+  // regarder. Il ne lève que marque, lieu et type de projet.
   function clearAll() {
+    const next = new URLSearchParams();
+    const type = params.get("type");
+    if (type) next.set("type", type);
+    const query = next.toString();
     startTransition(() => {
-      applyOptimistic({
-        type: null,
-        projectType: null,
-        brand: null,
-        city: null,
-      });
-      router.push("/", { scroll: false });
+      applyOptimistic({ projectType: null, brand: null, city: null });
+      router.push(query ? `/?${query}` : "/", { scroll: false });
     });
   }
 
   // Précharger au survol : le temps qu'il faut pour amener le curseur sur une
   // pilule suffit souvent à couvrir la requête, et le clic devient instantané.
   const prefetch = useCallback(
-    (key: string, value: string | null) => router.prefetch(hrefFor(key, value)),
+    (key: string, value: string | null, toggle = true) =>
+      router.prefetch(hrefFor(key, value, toggle)),
     [router, hrefFor]
   );
 
-  const activeCount = [
-    shown.type,
-    shown.projectType,
-    shown.brand,
-    shown.city,
-  ].filter(Boolean).length;
+  // Le type est exclu : un segmented control est toujours sur une valeur, le
+  // compter rendrait « Tout effacer » visible en permanence.
+  const activeCount = [shown.projectType, shown.brand, shown.city].filter(
+    Boolean
+  ).length;
+
+  const totalCount = options.types.reduce((sum, t) => sum + t.count, 0);
+  const typeTabs = [
+    { value: "all", count: totalCount },
+    ...TYPE_ORDER.flatMap((value) => {
+      const found = options.types.find((t) => t.value === value);
+      return found ? [{ value: value as string, count: found.count }] : [];
+    }),
+  ];
+  // null côté filtres — « tout » — est l'onglet Tout côté barre.
+  const activeType = shown.type ?? "all";
 
   const brandName =
     options.brands.find((b) => b.slug === shown.brand)?.name ?? null;
@@ -132,12 +163,12 @@ export function FilterBar({ options, active }: Props) {
       {/* Horizontal scroll rather than wrapping: on a phone the bar stays one
           line high instead of eating a third of the screen. */}
       <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {options.types.map(({ value, count }) => (
+        {typeTabs.map(({ value, count }) => (
           <Pill
             key={value}
-            active={shown.type === value}
-            onClick={() => apply("type", value)}
-            onPrefetch={() => prefetch("type", value)}
+            active={activeType === value}
+            onClick={() => selectType(value)}
+            onPrefetch={() => prefetch("type", value, false)}
           >
             <span className="mr-1.5 h-4 w-4 shrink-0" aria-hidden>
               {ICONS[TYPE_ICONS[value]]}
