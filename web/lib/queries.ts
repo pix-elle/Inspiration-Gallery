@@ -218,6 +218,63 @@ export async function updateItem(id: string, edits: ItemEdits) {
   `;
 }
 
+// --- opérations en lot ----------------------------------------------------
+//
+// Tout passe par un seul énoncé SQL plutôt qu'une boucle de requêtes. Sur une
+// sélection de quarante éléments, la boucle coûtait 120 allers-retours (un
+// getAdminItem avant, l'update, un getAdminItem après, par élément) ; ici
+// c'est un UPDATE et une lecture.
+
+export async function getAdminItemsByIds(ids: string[]): Promise<Item[]> {
+  if (ids.length === 0) return [];
+  return (await sql`
+    select * from items where id = any(${ids}::text[])
+  `) as Item[];
+}
+
+// Même logique de coalescence que updateItem : seuls les champs réellement
+// présents dans la requête sont touchés, le reste garde sa valeur.
+export async function updateItems(ids: string[], edits: ItemEdits) {
+  if (ids.length === 0) return;
+  await sql`
+    update items set
+      title        = case when ${edits.title !== undefined} then ${edits.title ?? null} else title end,
+      description  = case when ${edits.description !== undefined} then ${edits.description ?? null} else description end,
+      project_type = case when ${edits.projectType !== undefined} then ${edits.projectType ?? null} else project_type end,
+      brand_id     = case when ${edits.brandId !== undefined} then ${edits.brandId ?? null} else brand_id end,
+      status       = coalesce(${edits.status ?? null}, status),
+      updated_at   = now()
+    where id = any(${ids}::text[])
+  `;
+}
+
+// Renvoie de quoi nettoyer le stockage : une ligne par item réellement
+// supprimé, donc les identifiants inconnus disparaissent d'eux-mêmes.
+export async function deleteItemRows(
+  ids: string[]
+): Promise<{ id: string; source_key: string | null }[]> {
+  if (ids.length === 0) return [];
+  return (await sql`
+    delete from items where id = any(${ids}::text[])
+    returning id, source_key
+  `) as { id: string; source_key: string | null }[];
+}
+
+export async function markManyForRetry(ids: string[]) {
+  if (ids.length === 0) return;
+  await sql`
+    update items set status = 'processing', error = null, updated_at = now()
+    where id = any(${ids}::text[])
+  `;
+}
+
+// Les trois pages de galerie n'ont besoin d'être invalidées qu'une fois pour
+// tout le lot ; seules les pages d'item se comptent à l'unité.
+export function revalidateGalleryMany(itemIds: string[]) {
+  for (const path of ["/", "/images", "/videos"]) revalidatePath(path);
+  for (const id of itemIds) revalidatePath(`/item/${id}`);
+}
+
 // Returns what the caller needs to clean up in storage afterwards.
 export async function deleteItemRow(id: string): Promise<{ sourceKey: string | null } | null> {
   const rows = (await sql`

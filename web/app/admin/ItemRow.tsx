@@ -11,9 +11,16 @@ const STATUS_LABEL: Record<Item["status"], string> = {
   failed: "Échec",
 };
 
-type Props = { item: Item; brands: Brand[]; onChanged: () => void };
+type Props = {
+  item: Item;
+  brands: Brand[];
+  onChanged: () => void;
+  selected: boolean;
+  /** shiftKey remonte pour que la table puisse étendre une plage. */
+  onSelect: (shiftKey: boolean) => void;
+};
 
-export function ItemRow({ item, brands, onChanged }: Props) {
+export function ItemRow({ item, brands, onChanged, selected, onSelect }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -57,7 +64,23 @@ export function ItemRow({ item, brands, onChanged }: Props) {
     (item.image_base ? `${item.image_base}/400.webp` : null);
 
   return (
-    <tr className="border-t border-foreground/10 align-middle">
+    <tr
+      className={`border-t border-foreground/10 align-middle ${
+        selected ? "bg-foreground/5" : ""
+      }`}
+    >
+      <td className="py-2 pr-2">
+        {/* onClick plutôt que onChange : c'est lui qui porte shiftKey. */}
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => {}}
+          onClick={(e) => onSelect(e.shiftKey)}
+          aria-label={`Sélectionner ${item.title ?? "cet élément"}`}
+          className="h-4 w-4 cursor-pointer accent-current"
+        />
+      </td>
+
       <td className="py-2 pr-3">
         <div
           className="h-14 w-10 overflow-hidden rounded"
