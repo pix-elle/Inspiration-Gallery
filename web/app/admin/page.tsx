@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/dal";
 import { getAdminItems, getBrands } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 import { AdminTable } from "./AdminTable";
+import { AdminTabs } from "./AdminTabs";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata: Metadata = {
@@ -40,9 +41,10 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <AdminTable initialItems={items} initialBrands={brands} />
-
-      <SettingsForm initial={settings} />
+      <AdminTabs
+        medias={<AdminTable initialItems={items} initialBrands={brands} />}
+        textes={<SettingsForm initial={settings} />}
+      />
     </main>
   );
 }

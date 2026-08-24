@@ -17,9 +17,17 @@ import type { Item, ItemStatus, ProjectType } from "@/lib/types";
 
 const PROJECT_TYPES: ProjectType[] = ["popup", "store"];
 const SETTABLE_STATUS: ItemStatus[] = ["published", "unpublished"];
-// Une sélection plus large que ça vient forcément d'un « tout sélectionner »
-// malheureux plutôt que d'une intention.
-const MAX_IDS = 500;
+// Deux plafonds, parce que le coût n'est pas le même selon l'action.
+// Modifier ou relancer tient dans un seul énoncé SQL : le plafond n'est
+// qu'un garde-fou contre une requête aberrante, et il doit rester
+// confortablement au-dessus du nombre d'éléments du site.
+const MAX_IDS = 2000;
+// Supprimer, en revanche, liste et efface les fichiers de chaque item sur R2,
+// un préfixe à la fois. Au-delà de quelques centaines, c'est le délai
+// d'exécution de la fonction serverless qui lâche — et une suppression
+// interrompue à mi-course laisse des fichiers orphelins. Mieux vaut refuser
+// franchement que finir à moitié.
+const MAX_DELETE = 200;
 
 type Skipped = { id: string; reason: string };
 
@@ -29,7 +37,7 @@ type BulkResult = { done: string[]; skipped: Skipped[] };
 function readIds(body: Record<string, unknown>): string[] | null {
   if (!Array.isArray(body.ids)) return null;
   const ids = [...new Set(body.ids.map(String).filter(Boolean))];
-  return ids.length === 0 || ids.length > MAX_IDS ? null : ids;
+  return ids.length === 0 ? null : ids;
 }
 
 export async function POST(req: Request) {
@@ -44,14 +52,21 @@ export async function POST(req: Request) {
   }
 
   const ids = readIds(body);
-  if (!ids) {
+  if (!ids) return Response.json({ error: "Sélection vide" }, { status: 400 });
+
+  const action = String(body.action ?? "");
+  const cap = action === "delete" ? MAX_DELETE : MAX_IDS;
+  if (ids.length > cap) {
     return Response.json(
-      { error: `Sélection vide ou supérieure à ${MAX_IDS} éléments` },
+      {
+        error:
+          action === "delete"
+            ? `Suppression limitée à ${MAX_DELETE} éléments à la fois (nettoyage des fichiers). Sélection : ${ids.length}.`
+            : `Sélection limitée à ${MAX_IDS} éléments. Sélection : ${ids.length}.`,
+      },
       { status: 400 }
     );
   }
-
-  const action = String(body.action ?? "");
   // Une seule lecture pour tout le lot : c'est elle qui sert à motiver les
   // exclusions, et elle remplace un getAdminItem par élément.
   const found = await getAdminItemsByIds(ids);
