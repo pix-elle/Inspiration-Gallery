@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TransitionLink } from "@/components/atoms/TransitionLink";
 
 export default function NotFound() {
   return (
@@ -7,12 +7,12 @@ export default function NotFound() {
       <p className="text-sm text-foreground/60">
         This page doesn&apos;t exist — maybe it was removed.
       </p>
-      <Link
+      <TransitionLink
         href="/"
         className="text-sm underline hover:text-foreground text-foreground/70"
       >
         Back to the gallery
-      </Link>
+      </TransitionLink>
     </div>
   );
 }

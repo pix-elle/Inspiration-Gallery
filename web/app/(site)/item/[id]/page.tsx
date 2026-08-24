@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TransitionLink } from "@/components/atoms/TransitionLink";
 import { notFound } from "next/navigation";
 import { getItem } from "@/lib/queries";
 import { bestWidth } from "@/lib/media";
@@ -40,7 +40,7 @@ export default async function ItemPage({ params }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black">
-      <Link
+      <TransitionLink
         href="/"
         aria-label="Back to gallery"
         className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
@@ -48,7 +48,7 @@ export default async function ItemPage({ params }: Props) {
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
           <path d="M3.5 3.5l9 9m0-9l-9 9" />
         </svg>
-      </Link>
+      </TransitionLink>
 
       <div className="flex min-h-full flex-col items-center justify-center gap-3 p-4">
         <div

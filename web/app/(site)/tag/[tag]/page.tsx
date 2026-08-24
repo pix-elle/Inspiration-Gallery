@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TransitionLink } from "@/components/atoms/TransitionLink";
 import { GalleryFeed } from "@/components/organisms/GalleryFeed";
 
 export const revalidate = 300;
@@ -19,12 +19,12 @@ export default async function TagPage({ params }: Props) {
     <div>
       <div className="mb-4 flex items-center gap-3">
         <h1 className="text-lg font-semibold">#{tag}</h1>
-        <Link
+        <TransitionLink
           href="/"
           className="text-sm text-foreground/60 hover:text-foreground"
         >
           Clear ×
-        </Link>
+        </TransitionLink>
       </div>
       <GalleryFeed filters={{ tag }} showFilters={false} />
     </div>

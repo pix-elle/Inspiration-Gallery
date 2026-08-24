@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { TransitionLink } from "@/components/atoms/TransitionLink";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -19,7 +19,7 @@ export function NavLink({ href, label, icon }: NavLinkProps) {
     pathname === href || (href === "/" && pathname.startsWith("/item/"));
 
   return (
-    <Link
+    <TransitionLink
       href={href}
       aria-current={isActive ? "page" : undefined}
       className={`flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors ${
@@ -30,6 +30,6 @@ export function NavLink({ href, label, icon }: NavLinkProps) {
     >
       {icon && <span className="h-4 w-4 shrink-0">{icon}</span>}
       {label}
-    </Link>
+    </TransitionLink>
   );
 }

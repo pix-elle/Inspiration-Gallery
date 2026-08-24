@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TransitionLink } from "@/components/atoms/TransitionLink";
 import { siteConfig } from "@/site.config";
 
 export function Logo() {
@@ -8,7 +8,7 @@ export function Logo() {
   const wordmark = Boolean(logoImage) && logoIsWordmark;
 
   return (
-    <Link href="/" className="flex items-center gap-2 px-2 py-1">
+    <TransitionLink href="/" className="flex items-center gap-2 px-2 py-1">
       {logoImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -28,6 +28,6 @@ export function Logo() {
       {!wordmark && (
         <span className="text-sm font-semibold tracking-tight">{name}</span>
       )}
-    </Link>
+    </TransitionLink>
   );
 }
