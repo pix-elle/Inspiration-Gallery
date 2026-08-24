@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Loader2, RotateCw, Trash2, X } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2, RotateCw, Trash2, X } from "lucide-react";
 import type { Brand, Item } from "@/lib/types";
 
 type Props = {
@@ -16,6 +16,7 @@ type Result = { done: string[]; skipped: { id: string; reason: string }[] };
 // Ne s'affiche qu'avec une sélection : au repos la table reste nue.
 export function BulkBar({ selected, brands, onClear, onDone }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [brandDraft, setBrandDraft] = useState("");
   const [report, setReport] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -28,10 +29,14 @@ export function BulkBar({ selected, brands, onClear, onDone }: Props) {
     setBusy(label);
     setReport(null);
     try {
+      // Le menu envoie __none__ pour « retirer la marque » : brandId vide est
+      // déjà la valeur de l'option d'invite, il fallait les distinguer.
+      const payload =
+        body.brandId === "__none__" ? { ...body, brandId: null } : body;
       const res = await fetch("/api/admin/items/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids, ...body }),
+        body: JSON.stringify({ ids, ...payload }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Échec (${res.status})`);
@@ -75,11 +80,44 @@ export function BulkBar({ selected, brands, onClear, onDone }: Props) {
           onChange={(e) => e.target.value && run("brand", { action: "update", brandId: e.target.value })}
           className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm outline-none"
         >
-          <option value="">Marque…</option>
+          <option value="">Marque existante…</option>
+          <option value="__none__">— Aucune marque —</option>
           {brands.map((b) => (
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </select>
+
+        {/* Champ libre à côté du menu : le serveur passe par findOrCreateBrand,
+            qui réutilise la marque dont le slug correspond déjà. Retaper
+            « Nespresso » sur des items mal rangés les recolle donc à la marque
+            existante au lieu d'en créer une deuxième. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const name = brandDraft.trim();
+            if (!name) return;
+            run("brandName", { action: "update", brandName: name });
+            setBrandDraft("");
+          }}
+          className="flex items-center gap-1 rounded-md border border-foreground/15 px-2 focus-within:border-foreground/40"
+        >
+          <input
+            value={brandDraft}
+            onChange={(e) => setBrandDraft(e.target.value)}
+            disabled={disabled}
+            placeholder="ou saisir une marque…"
+            aria-label="Saisir une marque pour la sélection"
+            className="w-40 bg-transparent py-1.5 text-sm outline-none"
+          />
+          <button
+            type="submit"
+            disabled={disabled || !brandDraft.trim()}
+            aria-label="Appliquer la marque saisie"
+            className="rounded p-1 text-foreground/60 hover:text-foreground disabled:opacity-30"
+          >
+            <Check className="h-4 w-4" aria-hidden />
+          </button>
+        </form>
 
         <select
           defaultValue=""
