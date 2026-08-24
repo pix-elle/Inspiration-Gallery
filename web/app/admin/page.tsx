@@ -43,7 +43,7 @@ export default async function AdminPage() {
 
       <AdminTabs
         medias={<AdminTable initialItems={items} initialBrands={brands} />}
-        textes={<SettingsForm initial={settings} />}
+        textes={<SettingsForm initial={settings} items={items} />}
       />
     </main>
   );

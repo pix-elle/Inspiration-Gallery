@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { Settings } from "@/lib/settings";
+import type { Item } from "@/lib/types";
+import { MediaPicker } from "./MediaPicker";
 
 // Grouped the way someone thinks about the site, not the way the keys are
 // stored: everything about the pop-up together, everything about the sidebar
@@ -58,7 +60,13 @@ const FIELDS: {
   },
 ];
 
-export function SettingsForm({ initial }: { initial: Settings }) {
+export function SettingsForm({
+  initial,
+  items,
+}: {
+  initial: Settings;
+  items: Item[];
+}) {
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -85,6 +93,13 @@ export function SettingsForm({ initial }: { initial: Settings }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  // Même raison que l'interrupteur : on clique une vignette, elle doit tenir.
+  function pickMedia(itemId: string) {
+    const next = { ...values, newsletterMediaItemId: itemId };
+    setValues(next);
+    save(next);
   }
 
   // The toggle saves itself: a switch that needs a second click on "save"
@@ -137,6 +152,13 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           />
         </button>
       </div>
+
+      <MediaPicker
+        items={items}
+        value={values.newsletterMediaItemId}
+        onChange={pickMedia}
+        disabled={saving}
+      />
 
       {FIELDS.map((section) => (
         <div key={section.group} className="flex flex-col gap-3">

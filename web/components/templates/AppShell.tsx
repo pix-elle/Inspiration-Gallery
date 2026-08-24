@@ -4,6 +4,7 @@ import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { Sidebar } from "@/components/organisms/Sidebar";
 import { SubscribeModal } from "@/components/organisms/SubscribeModal";
 import { getSettings, isOn } from "@/lib/settings";
+import { getMediaItem } from "@/lib/queries";
 import { EditModeProvider } from "@/components/organisms/EditMode";
 
 export async function AppShell({ children }: { children: ReactNode }) {
@@ -11,6 +12,10 @@ export async function AppShell({ children }: { children: ReactNode }) {
   // server component is the only place that can read it without shipping a
   // database call to the browser.
   const settings = await getSettings();
+  // Résolu ici plutôt que dans le modal : le composant client n'a alors plus
+  // de requête à faire à l'ouverture, et un item supprimé retombe
+  // silencieusement sur le teaser automatique.
+  const pinnedMedia = await getMediaItem(settings.newsletterMediaItemId);
 
   return (
     <EditModeProvider>
@@ -32,6 +37,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
         title={settings.newsletterPopupTitle}
         successMessage={settings.newsletterPopupSuccess}
         buttonLabel={settings.subscribeButtonLabelShort}
+        pinnedMedia={pinnedMedia}
         />
       </div>
     </EditModeProvider>

@@ -26,6 +26,10 @@ export const SETTING_DEFAULTS = {
   newsletterPopupTitle:
     "Les vitrines, pop-ups et boutiques qui marquent — chaque semaine dans votre boîte mail",
   newsletterPopupSuccess: "C'est noté — premier envoi la semaine prochaine ✦",
+  // Identifiant de l'item affiché en teaser dans le pop-up. Vide = le
+  // comportement d'origine, la vidéo la plus récente. Un item supprimé
+  // depuis y ramène aussi : la résolution échoue et on retombe dessus.
+  newsletterMediaItemId: "",
   sidebarNewsletterTitle: "La newsletter",
   sidebarNewsletterText:
     "Une sélection de vitrines, pop-ups et aménagements repérés sur le terrain, chaque semaine dans votre boîte mail.",

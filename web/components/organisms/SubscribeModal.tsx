@@ -21,6 +21,8 @@ type Props = {
   title: string;
   successMessage: string;
   buttonLabel: string;
+  /** Teaser choisi depuis /admin. null = la vidéo la plus récente, comme avant. */
+  pinnedMedia?: Item | null;
 };
 
 // Lead-capture modal: shows once per visitor after a short while on the
@@ -33,6 +35,7 @@ export function SubscribeModal({
   title,
   successMessage,
   buttonLabel,
+  pinnedMedia = null,
 }: Props) {
   const { editing } = useEditMode();
   const [video, setVideo] = useState<Item | null>(null);
@@ -45,7 +48,13 @@ export function SubscribeModal({
   const sourceRef = useRef<"modal" | "button">("modal");
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Un teaser choisi arrive déjà résolu par le serveur : rien à aller
+  // chercher, le modal s'ouvre sur la même frame.
   const openWithVideo = async () => {
+    if (pinnedMedia) {
+      setOpen(true);
+      return;
+    }
     try {
       const res = await fetch("/api/items?type=video");
       const page = await res.json();
@@ -135,6 +144,9 @@ export function SubscribeModal({
     }
   };
 
+  // Le choix d'Alessia prime ; sinon on garde la vidéo la plus fraîche.
+  const teaser = pinnedMedia ?? video;
+
   if (!open) return null;
 
   return (
@@ -160,25 +172,40 @@ export function SubscribeModal({
           <X className="h-4 w-4" aria-hidden />
         </button>
 
-        {video && (
+        {teaser && (
           <div
             className="overflow-hidden rounded-lg"
             style={{
               // Never taller than 16:9; a wider clip keeps its own shape.
-              aspectRatio: Math.max(WIDEST_ALLOWED, video.width / video.height),
-              backgroundColor: video.dominant_color ?? "#1a1a1a",
+              aspectRatio: Math.max(WIDEST_ALLOWED, teaser.width / teaser.height),
+              backgroundColor: teaser.dominant_color ?? "#1a1a1a",
             }}
           >
-            <video
-              ref={videoRef}
-              src={video.video_url!}
-              poster={video.poster_url ?? undefined}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="h-full w-full object-cover"
-            />
+            {teaser.video_url ? (
+              <video
+                ref={videoRef}
+                src={teaser.video_url}
+                poster={teaser.poster_url ?? undefined}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              // Le pop-up plafonne à 400px de large : 800 couvre le 2x sans
+              // faire payer une image de galerie pleine taille.
+              <picture>
+                <source type="image/avif" srcSet={`${teaser.image_base}/800.avif`} />
+                <source type="image/webp" srcSet={`${teaser.image_base}/800.webp`} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${teaser.image_base}/800.webp`}
+                  alt={teaser.title ?? ""}
+                  className="h-full w-full object-cover"
+                />
+              </picture>
+            )}
           </div>
         )}
 

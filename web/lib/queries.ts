@@ -218,6 +218,18 @@ export async function updateItem(id: string, edits: ItemEdits) {
   `;
 }
 
+// Le teaser du pop-up, résolu sans filtre de statut : Alessia peut vouloir y
+// mettre une image téléversée exprès et laissée hors ligne, qui n'a donc rien
+// à faire dans la galerie publique. getItem() ne la trouverait pas.
+export async function getMediaItem(id: string): Promise<Item | null> {
+  if (!id) return null;
+  const rows = (await sql`
+    select * from items
+    where id = ${id} and (video_url is not null or image_base is not null)
+  `) as Item[];
+  return rows[0] ?? null;
+}
+
 // --- opérations en lot ----------------------------------------------------
 //
 // Tout passe par un seul énoncé SQL plutôt qu'une boucle de requêtes. Sur une
