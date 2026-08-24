@@ -1,10 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, X } from "lucide-react";
 import { ICONS } from "@/components/atoms/icons/nav";
+import { useReportFilterPending } from "@/components/organisms/FilterTransition";
 import type { FilterOptions, GalleryFilters } from "@/lib/types";
 
 // Sits above the grid rather than in the sidebar. A filter acts on the grid,
@@ -30,36 +39,93 @@ const TYPE_ICONS: Record<string, keyof typeof ICONS> = {
   image: "images",
   video: "videos",
 };
+// Le paramètre d'URL est en français, le champ du filtre en anglais : la
+// correspondance sert à peindre la pilule avant que le serveur ait répondu.
+const FIELD: Record<string, keyof GalleryFilters> = {
+  type: "type",
+  projet: "projectType",
+  marque: "brand",
+  lieu: "city",
+};
 
 type Props = { options: FilterOptions; active: GalleryFilters };
 
 export function FilterBar({ options, active }: Props) {
   const router = useRouter();
   const params = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const reportPending = useReportFilterPending();
+
+  // L'état pressé des pilules venait uniquement des props serveur : le clic
+  // restait mort pendant tout l'aller-retour RSC. useOptimistic peint la
+  // nouvelle sélection dans la frame du clic, et React la rend à la valeur du
+  // serveur dès que la transition se termine — y compris si elle échoue.
+  const [shown, applyOptimistic] = useOptimistic(
+    active,
+    (current: GalleryFilters, patch: Partial<GalleryFilters>) => ({
+      ...current,
+      ...patch,
+    })
+  );
+
+  // La grille est un sous-arbre frère rendu par le serveur ; c'est le contexte
+  // qui lui porte l'information « une navigation est en vol ».
+  useEffect(() => {
+    reportPending(isPending);
+  }, [isPending, reportPending]);
 
   // Toggling: clicking the active value clears it, which is what a pill that
   // looks pressed should do.
+  const hrefFor = useCallback(
+    (key: string, value: string | null) => {
+      const next = new URLSearchParams(params.toString());
+      if (!value || next.get(key) === value) next.delete(key);
+      else next.set(key, value);
+      const query = next.toString();
+      return query ? `/?${query}` : "/";
+    },
+    [params]
+  );
+
   function apply(key: string, value: string | null) {
-    const next = new URLSearchParams(params.toString());
-    if (!value || next.get(key) === value) next.delete(key);
-    else next.set(key, value);
-    const query = next.toString();
-    router.push(query ? `/?${query}` : "/", { scroll: false });
+    const cleared = !value || params.get(key) === value;
+    const href = hrefFor(key, value);
+    startTransition(() => {
+      applyOptimistic({
+        [FIELD[key]]: cleared ? null : value,
+      } as Partial<GalleryFilters>);
+      router.push(href, { scroll: false });
+    });
   }
 
   function clearAll() {
-    router.push("/", { scroll: false });
+    startTransition(() => {
+      applyOptimistic({
+        type: null,
+        projectType: null,
+        brand: null,
+        city: null,
+      });
+      router.push("/", { scroll: false });
+    });
   }
 
+  // Précharger au survol : le temps qu'il faut pour amener le curseur sur une
+  // pilule suffit souvent à couvrir la requête, et le clic devient instantané.
+  const prefetch = useCallback(
+    (key: string, value: string | null) => router.prefetch(hrefFor(key, value)),
+    [router, hrefFor]
+  );
+
   const activeCount = [
-    active.type,
-    active.projectType,
-    active.brand,
-    active.city,
+    shown.type,
+    shown.projectType,
+    shown.brand,
+    shown.city,
   ].filter(Boolean).length;
 
   const brandName =
-    options.brands.find((b) => b.slug === active.brand)?.name ?? null;
+    options.brands.find((b) => b.slug === shown.brand)?.name ?? null;
 
   return (
     <div className="sticky top-0 z-20 -mx-4 mb-4 bg-background/85 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
@@ -69,8 +135,9 @@ export function FilterBar({ options, active }: Props) {
         {options.types.map(({ value, count }) => (
           <Pill
             key={value}
-            active={active.type === value}
+            active={shown.type === value}
             onClick={() => apply("type", value)}
+            onPrefetch={() => prefetch("type", value)}
           >
             <span className="mr-1.5 h-4 w-4 shrink-0" aria-hidden>
               {ICONS[TYPE_ICONS[value]]}
@@ -85,8 +152,9 @@ export function FilterBar({ options, active }: Props) {
         {options.projectTypes.map(({ value, count }) => (
           <Pill
             key={value}
-            active={active.projectType === value}
+            active={shown.projectType === value}
             onClick={() => apply("projet", value)}
+            onPrefetch={() => prefetch("projet", value)}
           >
             {PROJECT_LABELS[value]}
             <Count n={count} />
@@ -109,22 +177,24 @@ export function FilterBar({ options, active }: Props) {
               label: b.name,
               count: b.count,
             }))}
-            activeValue={active.brand ?? null}
+            activeValue={shown.brand ?? null}
             onSelect={(v) => apply("marque", v)}
+            onPrefetch={(v) => prefetch("marque", v)}
           />
         )}
 
         {options.cities.length > 0 && (
           <Dropdown
             label="Lieu"
-            selected={active.city ?? null}
+            selected={shown.city ?? null}
             items={options.cities.map((c) => ({
               value: c.city,
               label: c.city,
               count: c.count,
             }))}
-            activeValue={active.city ?? null}
+            activeValue={shown.city ?? null}
             onSelect={(v) => apply("lieu", v)}
+            onPrefetch={(v) => prefetch("lieu", v)}
           />
         )}
 
@@ -154,16 +224,20 @@ function Count({ n }: { n: number }) {
 function Pill({
   active,
   onClick,
+  onPrefetch,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  onPrefetch?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
       aria-pressed={active}
       className={`flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors ${
         active
@@ -184,6 +258,7 @@ function Dropdown({
   items,
   activeValue,
   onSelect,
+  onPrefetch,
   searchable = false,
 }: {
   label: string;
@@ -191,6 +266,7 @@ function Dropdown({
   items: DropdownItem[];
   activeValue: string | null;
   onSelect: (value: string) => void;
+  onPrefetch?: (value: string) => void;
   searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -289,6 +365,10 @@ function Dropdown({
                 setOpen(false);
                 setQuery("");
               }}
+              // Une entrée à la fois : préparer les trente marques à
+              // l'ouverture du menu coûterait trente requêtes pour un clic.
+              onMouseEnter={() => onPrefetch?.(item.value)}
+              onFocus={() => onPrefetch?.(item.value)}
               className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-foreground/5"
             >
               <span className="flex min-w-0 items-center gap-1.5">
