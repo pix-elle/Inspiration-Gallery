@@ -63,8 +63,13 @@ export function Gallery({
   // frame as the click. The URL is kept shareable via history.pushState;
   // a direct load of /item/[id] gets the full server page instead.
   const [selected, setSelected] = useState<Item | null>(null);
+  // Tenue à jour dans un effet, pas pendant le rendu : écrire une ref pendant
+  // le rendu est ce que React interdit. Le gestionnaire popstate, lui, doit
+  // lire la valeur courante sans se ré-abonner à chaque ouverture.
   const selectedRef = useRef<Item | null>(null);
-  selectedRef.current = selected;
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
   // Only the clicked tile carries a view-transition-name: every named element
   // gets snapshotted ABOVE the real DOM (incl. the backdrop) during the
   // transition, so naming all tiles makes them float over the modal.

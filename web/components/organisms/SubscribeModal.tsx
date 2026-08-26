@@ -98,6 +98,17 @@ export function SubscribeModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Déclaré avant l'effet qui l'appelle : plus bas, la référence portait sur
+  // une constante pas encore initialisée au moment où l'effet est écrit.
+  const dismiss = () => {
+    try {
+      localStorage.setItem(DISMISSED_KEY, "1");
+    } catch {
+      // Nothing to remember, but the modal still closes.
+    }
+    setOpen(false);
+  };
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -110,17 +121,7 @@ export function SubscribeModal({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  const dismiss = () => {
-    try {
-      localStorage.setItem(DISMISSED_KEY, "1");
-    } catch {
-      // Nothing to remember, but the modal still closes.
-    }
-    setOpen(false);
-  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,7 +199,6 @@ export function SubscribeModal({
               <picture>
                 <source type="image/avif" srcSet={`${teaser.image_base}/800.avif`} />
                 <source type="image/webp" srcSet={`${teaser.image_base}/800.webp`} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`${teaser.image_base}/800.webp`}
                   alt={teaser.title ?? ""}

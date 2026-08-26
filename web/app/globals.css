@@ -108,6 +108,12 @@ button:not(:disabled) {
   /* Un second clic pendant la bascule enverrait une navigation depuis une
      barre déjà périmée. */
   pointer-events: none;
+  /* Le voile ne s'installe qu'au-delà de 120 ms. En dessous, la réponse est
+     déjà là et un fondu qui s'allume puis s'éteint aussitôt se lit comme un
+     clignotement — plus gênant que le remplacement qu'il devait couvrir.
+     Le délai ne porte que sur l'entrée : au retour c'est la règle de base,
+     sans delay, qui reprend la main, donc le contenu réapparaît aussitôt. */
+  transition-delay: 120ms;
 }
 
 /* Pas de fill-mode : une fois l'animation finie l'élément retrouve son style

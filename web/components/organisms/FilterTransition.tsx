@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 // La barre de filtres et la grille sont deux sous-arbres frères, et la grille
 // est rendue sur le serveur : elle ne peut pas lire le `isPending` du
@@ -43,37 +36,30 @@ type FilteredGridProps = {
 
 export function FilteredGrid({ token, children }: FilteredGridProps) {
   const pending = useContext(PendingContext);
-  const [dimmed, setDimmed] = useState(false);
-  // Le premier rendu est celui du serveur : il arrive déjà à sa place et ne
-  // doit pas s'animer, sinon la page d'accueil démarre à opacité zéro.
-  const mounted = useRef(false);
 
-  useEffect(() => {
-    mounted.current = true;
-  }, []);
+  // Motif React d'ajustement d'état sur changement de prop : on compare au
+  // rendu précédent plutôt que de consulter une ref, qu'il est interdit de
+  // lire pendant le rendu. Le premier rendu vient du serveur — il est déjà à
+  // sa place et ne doit pas s'animer, sinon l'accueil démarre à opacité zéro.
+  const [seen, setSeen] = useState(token);
+  const [animate, setAnimate] = useState(false);
+  if (token !== seen) {
+    setSeen(token);
+    setAnimate(true);
+  }
 
-  // Le voile n'apparaît qu'au-delà de ~120 ms. En dessous, la réponse est déjà
-  // là et un fondu qui s'allume puis s'éteint aussitôt se lit comme un
-  // clignotement — plus gênant que le remplacement qu'il devait couvrir.
-  useEffect(() => {
-    if (!pending) {
-      setDimmed(false);
-      return;
-    }
-    const timer = setTimeout(() => setDimmed(true), 120);
-    return () => clearTimeout(timer);
-  }, [pending]);
-
+  // Le seuil des 120 ms est passé au CSS (transition-delay) : il n'y a plus
+  // d'état ni de minuterie à tenir, donc plus de setState dans un effet.
   return (
     <div
       className="filter-veil"
-      data-pending={dimmed || undefined}
+      data-pending={pending || undefined}
       aria-busy={pending || undefined}
     >
       {/* La clé remonte le sous-arbre à chaque changement de filtre, ce qui
           redéclenche l'animation CSS : sans elle, le nouveau jeu de résultats
           se substituerait à l'ancien sans transition. */}
-      <div key={token} className={mounted.current ? "filter-enter" : undefined}>
+      <div key={token} className={animate ? "filter-enter" : undefined}>
         {children}
       </div>
     </div>
