@@ -1,13 +1,12 @@
 import { Skeleton } from "@/components/atoms/Skeleton";
 
 // Mêmes points de rupture que useColumnCount dans Gallery : 1 colonne sous
-// 640px, 3 sous 1280px, 4 au-delà. Un squelette qui n'a pas le nombre de
-// colonnes de la grille qu'il annonce se trahit au moment de la bascule.
+// 640px, 3 au-delà. Un squelette qui n'a pas le nombre de colonnes de la
+// grille qu'il annonce se trahit au moment de la bascule.
 const COLUMNS = [
   ["h-52", "h-72", "h-44", "h-60"],
   ["h-64", "h-48", "h-64", "h-56"],
   ["h-44", "h-80", "h-52", "h-72"],
-  ["h-60", "h-56", "h-72", "h-48"],
 ];
 
 // Les hauteurs sont fixes et volontairement irrégulières. Des tuiles toutes
@@ -30,9 +29,7 @@ export function PageSkeleton() {
         {COLUMNS.map((column, c) => (
           <div
             key={c}
-            className={`min-w-0 flex-1 ${
-              c === 3 ? "hidden xl:block" : c > 0 ? "hidden sm:block" : ""
-            }`}
+            className={`min-w-0 flex-1 ${c > 0 ? "hidden sm:block" : ""}`}
           >
             {column.map((h, i) => (
               <div key={i} className="px-2 pb-4">

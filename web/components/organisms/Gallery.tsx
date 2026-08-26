@@ -27,14 +27,13 @@ function withViewTransition(update: () => void): ViewTransition | null {
   return transition;
 }
 
-// Column count: 1 (mobile) / 3 (tablet+laptop) / 4 (wide).
-// SSR default is 4 (desktop-first) so the first paint doesn't reflow on
+// Column count: 1 (mobile) / 3 partout ailleurs.
+// SSR default is 3 (desktop-first) so the first paint doesn't reflow on
 // desktop; smaller screens correct once on mount.
 function useColumnCount() {
-  const [columns, setColumns] = useState(4);
+  const [columns, setColumns] = useState(3);
   useEffect(() => {
-    const compute = () =>
-      setColumns(window.innerWidth < 640 ? 1 : window.innerWidth < 1280 ? 3 : 4);
+    const compute = () => setColumns(window.innerWidth < 640 ? 1 : 3);
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);

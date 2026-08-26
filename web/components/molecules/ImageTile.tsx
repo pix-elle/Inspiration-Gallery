@@ -4,8 +4,10 @@ import { useState } from "react";
 import type { Item } from "@/lib/types";
 
 const ALL_WIDTHS = [400, 800, 1200, 2000];
-// Matches the tile's share of the viewport per breakpoint (1/3/4 columns).
-const SIZES = "(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw";
+// Matches the tile's share of the viewport per breakpoint (1 ou 3 colonnes).
+// Doit suivre useColumnCount : un sizes qui ment fait choisir au navigateur
+// une variante trop petite, et l'image sort floue sur les grands écrans.
+const SIZES = "(max-width: 640px) 100vw, 33vw";
 
 export function ImageTile({ item }: { item: Item }) {
   const [loaded, setLoaded] = useState(false);
