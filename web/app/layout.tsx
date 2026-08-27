@@ -35,9 +35,12 @@ const applyStoredTheme = `try{var t=localStorage.getItem("theme");if(t==="dark"|
 
 // Même raison que le thème, et même urgence : la largeur de la barre latérale
 // commande la mise en page de toute la grille. Appliquée après l'hydratation,
-// la galerie entière sauterait à chaque chargement. Sans choix mémorisé, on
-// replie sous 1280px — c'est là que la barre coûte le plus cher en proportion.
-const applySidebarState = `try{var s=localStorage.getItem("sidebar");if(s!=="full"&&s!=="mini")s=window.innerWidth<1280?"mini":"full";document.documentElement.dataset.sidebar=s}catch(e){document.documentElement.dataset.sidebar="full"}`;
+// la galerie entière sauterait à chaque chargement.
+//
+// Repliée par défaut, quelle que soit la taille de l'écran : la galerie est ce
+// qu'on vient voir, la barre ne doit pas lui prendre 224px avant qu'on ait rien
+// demandé. Seul un « full » explicitement mémorisé la déplie.
+const applySidebarState = `try{var s=localStorage.getItem("sidebar");document.documentElement.dataset.sidebar=s==="full"?"full":"mini"}catch(e){document.documentElement.dataset.sidebar="mini"}`;
 
 export default function RootLayout({
   children,
