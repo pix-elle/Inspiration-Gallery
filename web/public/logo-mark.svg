@@ -1,0 +1,102 @@
+<svg width="46" height="64" viewBox="0 0 45.8234 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Sigle seul, extrait de logo.svg. Le texte « Nexus Studio » y est dessiné
+     à partir de x=77.8 dans un groupe #Headline distinct, avec ses propres
+     keyframes : le retirer ne touche donc pas l'animation du sigle. -->
+<style>
+svg { overflow: visible; }
+#Logo_Noir_1 {
+  transform-origin: 0 0;
+  animation: kf_Logo_Noir_1_transform_0 2s linear 1 both;
+}
+#Vector {
+  transform-origin: 0 0;
+  animation:
+    kf_Vector_transform_0 2s linear 1 both,
+    kf_Vector_opacity_0 2s linear 1 both;
+}
+#Vector_2 {
+  transform-origin: 0 0;
+  animation:
+    kf_Vector_2_transform_0 2s linear 1 both,
+    kf_Vector_2_opacity_0 2s linear 1 both;
+}
+@keyframes kf_Logo_Noir_1_transform_0 {
+  0% {
+    animation-timing-function: linear(0, 0.0169, 0.061, 0.1236, 0.1977, 0.2779, 0.36, 0.4408, 0.5181, 0.5903, 0.6564, 0.716, 0.7688, 0.815, 0.8548, 0.8887, 0.9171, 0.9407, 0.9598, 0.9752, 0.9872, 0.9965, 1.0034, 1.0083, 1.0117, 1.0138, 1.0148, 1.0152, 1.0149, 1.0142, 1.0133, 1.0122, 1.011, 1.0097, 1.0085, 1.0073, 1.0062, 1.0052, 1.0043, 1.0035, 1.0028, 1.0022, 1.0017, 1.0013, 1.0009, 1.0006, 1.0004, 1.0002, 1.0001, 0.9999, 0.9999);
+    transform: translate(22.912px, 32px) rotate(0.14rad) translate(-22.912px, -32px);
+  }
+  25% {
+    transform: translate(22.912px, 32px) rotate(0rad) translate(-22.912px, -32px);
+  }
+  100% {
+    transform: translate(22.912px, 32px) rotate(0rad) translate(-22.912px, -32px);
+  }
+}
+@keyframes kf_Vector_transform_0 {
+  0% {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(26.272px) translateX(-30px);
+  }
+  20% {
+    transform: translateY(26.272px) translateX(0px);
+  }
+  100% {
+    transform: translateY(26.272px) translateX(0px);
+  }
+}
+@keyframes kf_Vector_opacity_0 {
+  0% {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+  }
+  20% {
+    animation-timing-function: linear;
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes kf_Vector_2_transform_0 {
+  0% {
+    transform: translateX(22.912px) translateX(-30px);
+  }
+  5% {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateX(22.912px) translateX(-30px);
+  }
+  25% {
+    transform: translateX(22.912px) translateX(0px);
+  }
+  100% {
+    transform: translateX(22.912px) translateX(0px);
+  }
+}
+@keyframes kf_Vector_2_opacity_0 {
+  0% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
+  5% {
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+  }
+  25% {
+    animation-timing-function: linear;
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+</style>
+<g id="Logo_Noir_1" clip-path="url(#clip0_100_102)">
+<path id="Vector" transform="translate(0 26.2721)" d="M0 0L22.9117 18.1476V37.7279H0V0Z" fill="#F05800"/>
+<path id="Vector_2" transform="translate(22.9121)" d="M0 9.54654L22.9117 0V63.0072L0 44.8687V9.54654Z" fill="#F05800"/>
+</g>
+<defs>
+<clipPath id="clip0_100_102">
+<rect width="45.8234" height="64" fill="white"/>
+</clipPath>
+</defs>
+</svg>

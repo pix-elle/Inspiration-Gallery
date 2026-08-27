@@ -27,6 +27,11 @@ export const siteConfig = {
   // afficher la première lettre du nom dans un carré
   logoImage: "/logo.svg" as string | null,
 
+  // Version « sigle seul » du logo, sans le nom écrit à côté. Utilisée quand
+  // la barre latérale est repliée : 80 px de large ne laissent pas la place
+  // au wordmark. null pour retomber sur la première lettre du nom.
+  logoMarkImage: "/logo-mark.svg" as string | null,
+
   // Le logo contient-il déjà le nom du site écrit dedans ?
   //  true  → on affiche le logo seul, en large (c'est le cas de
   //          logo.svg : le mot « Nexus Studio » est dessiné dedans)

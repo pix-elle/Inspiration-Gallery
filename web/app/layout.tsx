@@ -33,6 +33,12 @@ export async function generateMetadata(): Promise<Metadata> {
 // try/catch because localStorage throws outright in some privacy modes.
 const applyStoredTheme = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
 
+// Même raison que le thème, et même urgence : la largeur de la barre latérale
+// commande la mise en page de toute la grille. Appliquée après l'hydratation,
+// la galerie entière sauterait à chaque chargement. Sans choix mémorisé, on
+// replie sous 1280px — c'est là que la barre coûte le plus cher en proportion.
+const applySidebarState = `try{var s=localStorage.getItem("sidebar");if(s!=="full"&&s!=="mini")s=window.innerWidth<1280?"mini":"full";document.documentElement.dataset.sidebar=s}catch(e){document.documentElement.dataset.sidebar="full"}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -47,7 +53,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: applyStoredTheme }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: applyStoredTheme + applySidebarState,
+          }}
+        />
       </head>
       {/* Deliberately bare: each route group brings its own chrome. The
           public gallery gets the sidebar via app/(site)/layout.tsx; /admin

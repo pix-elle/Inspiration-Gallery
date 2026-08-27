@@ -27,18 +27,38 @@ function withViewTransition(update: () => void): ViewTransition | null {
   return transition;
 }
 
-// Column count: 1 (mobile) / 3 partout ailleurs.
+// Seuils exprimés sur la largeur DISPONIBLE, pas sur celle de la fenêtre.
+// Avec une barre latérale repliable, la même fenêtre de 768px offre 640px de
+// contenu repliée et 496px dépliée : mesurer le conteneur est la seule façon
+// d'avoir raison dans les deux états. C'est aussi ce qui règle le cas tablette,
+// où trois colonnes tombaient à 165px de large.
+const BREAKPOINTS = [
+  { min: 860, columns: 3 },
+  { min: 520, columns: 2 },
+  { min: 0, columns: 1 },
+];
+
 // SSR default is 3 (desktop-first) so the first paint doesn't reflow on
 // desktop; smaller screens correct once on mount.
 function useColumnCount() {
+  const ref = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
+
   useEffect(() => {
-    const compute = () => setColumns(window.innerWidth < 640 ? 1 : 3);
-    compute();
-    window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      const next = BREAKPOINTS.find((b) => width >= b.min)?.columns ?? 1;
+      // React coupe court si la valeur ne change pas : le redécoupage de la
+      // mosaïque ne se refait donc pas à chaque frame de redimensionnement.
+      setColumns(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
-  return columns;
+
+  return { ref, columns };
 }
 
 type GalleryProps = {
@@ -52,7 +72,7 @@ export function Gallery({
   initialCursor,
   filters = {},
 }: GalleryProps) {
-  const columnCount = useColumnCount();
+  const { ref: gridRef, columns: columnCount } = useColumnCount();
   const [items, setItems] = useState(initialItems);
   const [cursor, setCursor] = useState(initialCursor);
   const loadingRef = useRef(false);
@@ -224,7 +244,7 @@ export function Gallery({
   }
 
   return (
-    <div className="-mx-2">
+    <div className="-mx-2" ref={gridRef}>
       <div className="flex items-start">
         {columns.map((column, c) => (
           <div key={c} className="min-w-0 flex-1">

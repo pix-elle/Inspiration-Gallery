@@ -2,99 +2,108 @@ import { Logo } from "@/components/atoms/Logo";
 import { SubscribeButton } from "@/components/atoms/SubscribeButton";
 import { SidebarNav } from "@/components/molecules/SidebarNav";
 import { ThemeToggle } from "@/components/atoms/ThemeToggle";
+import { SidebarToggle } from "@/components/atoms/SidebarToggle";
+import { RailSubscribeButton } from "@/components/atoms/RailSubscribeButton";
+import { SOCIAL_ICONS, SOCIAL_LABELS, ENVELOPE } from "@/components/atoms/icons/social";
 import { siteConfig } from "@/site.config";
 import { EditableText } from "@/components/organisms/EditMode";
 import type { Settings } from "@/lib/settings";
 
+const SOCIALS = ["instagram", "linkedin", "twitter"] as const;
+
+// Deux variantes rendues côté serveur, le CSS choisit laquelle s'affiche.
+// Le serveur ne peut pas connaître l'état de la barre, et un rendu conditionnel
+// en JavaScript ferait sauter la grille entière après l'hydratation.
 export function Sidebar({ settings }: { settings: Settings }) {
+  const socials = SOCIALS.filter((key) => siteConfig.socials[key]);
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-56 flex-col gap-6 border-r border-foreground/10 p-4 pb-8 md:flex">
-      <Logo />
-      <SidebarNav />
+    <aside className="fixed inset-y-0 left-0 z-10 hidden w-[var(--sidebar-w)] flex-col gap-6 border-r border-foreground/10 p-4 pb-8 md:flex">
+      <div className="sidebar-full flex flex-col gap-6">
+        <Logo />
+        <SidebarNav />
+      </div>
+
+      <div className="sidebar-mini flex-col items-center gap-4">
+        <Logo mark />
+        <SidebarNav mini />
+      </div>
+
       <div className="mt-auto flex flex-col gap-5">
-        <div className="flex flex-col gap-1 px-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="h-4 w-4 shrink-0"
-            >
-              <rect x="1.75" y="3.25" width="12.5" height="9.5" rx="1.5" />
-              <path d="m2.5 4.5 5.5 4.25L13.5 4.5" />
-            </svg>
-            <EditableText
-              settingKey="sidebarNewsletterTitle"
-              value={settings.sidebarNewsletterTitle}
-            />
-          </h2>
-          <p className="text-xs leading-relaxed text-foreground/60">
-            <EditableText
-              settingKey="sidebarNewsletterText"
-              value={settings.sidebarNewsletterText}
-              multiline
-              className="text-xs leading-relaxed"
-            />
-          </p>
+        {/* Déplié : le bloc de conversion complet, titre, texte et bouton. */}
+        <div className="sidebar-full flex-col gap-5">
+          <div className="flex flex-col gap-1 px-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <span className="h-4 w-4 shrink-0">{ENVELOPE}</span>
+              <EditableText
+                settingKey="sidebarNewsletterTitle"
+                value={settings.sidebarNewsletterTitle}
+              />
+            </h2>
+            <p className="text-xs leading-relaxed text-foreground/60">
+              <EditableText
+                settingKey="sidebarNewsletterText"
+                value={settings.sidebarNewsletterText}
+                multiline
+                className="text-xs leading-relaxed"
+              />
+            </p>
+          </div>
+          <SubscribeButton
+            label={settings.subscribeButtonLabel}
+            className="w-full px-3 py-2"
+          />
+          <hr className="border-foreground/10" />
         </div>
-        <SubscribeButton
-          label={settings.subscribeButtonLabel}
-          className="w-full px-3 py-2"
-        />
-        <hr className="border-foreground/10" />
-        <div className="flex items-center gap-4 px-2">
-          {siteConfig.socials.instagram && (
-            <a
-              href={siteConfig.socials.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="text-foreground/60 transition-colors hover:text-foreground"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="h-4 w-4"
-              >
-                <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="3.5" />
-                <circle cx="8" cy="8" r="2.9" />
-                <circle cx="11.7" cy="4.3" r="0.4" fill="currentColor" stroke="none" />
-              </svg>
-            </a>
-          )}
-          {siteConfig.socials.linkedin && (
-            <a
-              href={siteConfig.socials.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="LinkedIn"
-              className="text-foreground/60 transition-colors hover:text-foreground"
-            >
-              <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                <path d="M13.6 0H2.4A2.4 2.4 0 0 0 0 2.4v11.2A2.4 2.4 0 0 0 2.4 16h11.2a2.4 2.4 0 0 0 2.4-2.4V2.4A2.4 2.4 0 0 0 13.6 0ZM5 13.4H2.9V6.2H5v7.2Zm-1-8.2a1.2 1.2 0 1 1 0-2.5 1.2 1.2 0 0 1 0 2.5Zm9.1 8.2H11V9.6c0-.9-.3-1.5-1.1-1.5-.6 0-1 .4-1.1 .8-.1.2-.1.4-.1.6v3.9H6.6V6.2h2.1v1a2.1 2.1 0 0 1 1.9-1c1.4 0 2.5.9 2.5 2.9v4.3Z" />
-              </svg>
-            </a>
-          )}
-          {siteConfig.socials.twitter && (
-            <a
-              href={siteConfig.socials.twitter}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="X (Twitter)"
-              className="text-foreground/60 transition-colors hover:text-foreground"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
-              </svg>
-            </a>
-          )}
+
+        {/* Replié : une enveloppe qui ouvre le même modal, via le même
+            événement — aucune logique dupliquée. */}
+        <div className="sidebar-mini flex-col items-center gap-3">
+          <RailSubscribeButton label={settings.subscribeButtonLabelShort} />
+          <hr className="w-6 border-foreground/10" />
         </div>
-        <hr className="border-foreground/10" />
-        <div className="flex items-center px-2">
+
+        <div className="sidebar-full flex-row items-center gap-4 px-2">
+          {socials.map((key) => (
+            <a
+              key={key}
+              href={siteConfig.socials[key]!}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={SOCIAL_LABELS[key]}
+              className="h-4 w-4 text-foreground/60 transition-colors hover:text-foreground"
+            >
+              {SOCIAL_ICONS[key]}
+            </a>
+          ))}
+        </div>
+
+        <div className="sidebar-mini flex-col items-center gap-3">
+          {socials.map((key) => (
+            <a
+              key={key}
+              href={siteConfig.socials[key]!}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={SOCIAL_LABELS[key]}
+              data-tip={SOCIAL_LABELS[key]}
+              className="rail-tip flex h-8 w-8 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            >
+              <span className="h-4 w-4">{SOCIAL_ICONS[key]}</span>
+            </a>
+          ))}
+        </div>
+
+        <hr className="sidebar-full border-foreground/10" />
+
+        <div className="flex items-center justify-between gap-2 px-2 sidebar-full">
           <ThemeToggle />
+          <SidebarToggle />
+        </div>
+
+        <div className="sidebar-mini flex-col items-center gap-3">
+          <ThemeToggle />
+          <SidebarToggle />
         </div>
       </div>
     </aside>

@@ -89,6 +89,59 @@ body {
   contain-intrinsic-size: auto 400px;
 }
 
+/* Barre latérale repliable.
+   La largeur vit dans une variable plutôt que dans des classes React : le
+   serveur ne peut pas savoir dans quel état la barre se trouvera, et un
+   basculement piloté par l'état ferait sauter la grille après l'hydratation.
+   Les deux variantes sont TOUJOURS rendues ; c'est le CSS qui choisit. */
+:root {
+  --sidebar-w: 14rem; /* 224px, dépliée */
+}
+:root[data-sidebar="mini"] {
+  --sidebar-w: 5rem; /* 80px — le plafond demandé */
+}
+
+.sidebar-mini {
+  display: none;
+}
+:root[data-sidebar="mini"] .sidebar-mini {
+  display: flex;
+}
+:root[data-sidebar="mini"] .sidebar-full {
+  display: none;
+}
+
+/* Une infobulle CSS plutôt que l'attribut title : celui-ci met une seconde à
+   apparaître et ne se met pas en forme. Repliée, la barre n'a plus de
+   libellés — c'est ce qui les remplace. */
+.rail-tip {
+  position: relative;
+}
+.rail-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 50;
+}
+.rail-tip:hover::after,
+.rail-tip:focus-visible::after {
+  opacity: 1;
+}
+:root:not([data-sidebar="mini"]) .rail-tip::after {
+  content: none;
+}
+
 /* Tailwind v4 dropped the pointer cursor on buttons — restore it. */
 button:not(:disabled) {
   cursor: pointer;

@@ -30,7 +30,9 @@ export async function AppShell({ children }: { children: ReactNode }) {
           className="px-3 py-1.5"
         />
       </header>
-      <main className="p-4 md:ml-56 md:p-6">{children}</main>
+      {/* La marge lit la même variable que la barre : un seul endroit décide
+          de la largeur, et le CSS l'applique avant le premier paint. */}
+      <main className="p-4 md:ml-[var(--sidebar-w)] md:p-6">{children}</main>
       <SubscribeModal
         autoOpen={isOn(settings.newsletterPopupEnabled)}
         delaySeconds={Number(settings.newsletterPopupDelaySeconds) || 8}

@@ -4,10 +4,12 @@ import { useState } from "react";
 import type { Item } from "@/lib/types";
 
 const ALL_WIDTHS = [400, 800, 1200, 2000];
-// Matches the tile's share of the viewport per breakpoint (1 ou 3 colonnes).
-// Doit suivre useColumnCount : un sizes qui ment fait choisir au navigateur
-// une variante trop petite, et l'image sort floue sur les grands écrans.
-const SIZES = "(max-width: 640px) 100vw, 33vw";
+// Approximation des seuils de useColumnCount. « Approximation » parce que
+// sizes s'exprime en unités de fenêtre et ne peut pas savoir si la barre
+// latérale est repliée — la même fenêtre donne deux largeurs de tuile. On
+// arrondit vers le haut : sur-estimer coûte quelques octets, sous-estimer
+// rendrait l'image floue, ce qui ne se rattrape pas.
+const SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 export function ImageTile({ item }: { item: Item }) {
   const [loaded, setLoaded] = useState(false);
