@@ -54,7 +54,10 @@ export const siteConfig = {
   // disparaît alors, plutôt que de pointer dans le vide.
   socials: {
     instagram: "https://www.instagram.com/motioon.collective" as string | null,
-    twitter: "https://x.com/motioon.collective" as string | null,
+    // Masqué pour l'instant, le compte n'est pas utilisé. Pour le remettre :
+    // remplacer null par la ligne commentée juste en dessous.
+    twitter: null as string | null,
+    // twitter: "https://x.com/motioon.collective" as string | null,
     linkedin:
       "https://www.linkedin.com/company/nexus-retail-experience-llc/" as
         | string
