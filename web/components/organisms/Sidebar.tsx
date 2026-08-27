@@ -109,6 +109,9 @@ export function Sidebar({ settings }: { settings: Settings }) {
         <div className="sidebar-mini flex-col items-center gap-3">
           <hr className="w-6 border-foreground/10" />
           <ThemeToggle />
+          {/* Le thème agit sur le site, la bascule sur la barre elle-même :
+              deux registres différents, donc un trait entre les deux. */}
+          <hr className="w-6 border-foreground/10" />
           <SidebarToggle />
         </div>
       </div>
