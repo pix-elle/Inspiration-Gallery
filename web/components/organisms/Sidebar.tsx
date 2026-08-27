@@ -31,7 +31,7 @@ export function Sidebar({ settings }: { settings: Settings }) {
 
       <div className="mt-auto flex flex-col gap-5">
         {/* Déplié : le bloc de conversion complet, titre, texte et bouton. */}
-        <div className="sidebar-full flex-col gap-5">
+        <div className="sidebar-full flex flex-col gap-5">
           <div className="flex flex-col gap-1 px-2">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <span className="h-4 w-4 shrink-0">{ENVELOPE}</span>
@@ -63,7 +63,7 @@ export function Sidebar({ settings }: { settings: Settings }) {
           <hr className="w-6 border-foreground/10" />
         </div>
 
-        <div className="sidebar-full flex-row items-center gap-4 px-2">
+        <div className="sidebar-full flex flex-row items-center gap-4 px-2">
           {socials.map((key) => (
             <a
               key={key}
@@ -71,9 +71,11 @@ export function Sidebar({ settings }: { settings: Settings }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={SOCIAL_LABELS[key]}
-              className="h-4 w-4 text-foreground/60 transition-colors hover:text-foreground"
+              className="text-foreground/60 transition-colors hover:text-foreground"
             >
-              {SOCIAL_ICONS[key]}
+              {/* La taille vit sur un bloc, pas sur le <a> : une ancre est
+                  inline, et h-4 w-4 n'y produirait rien. */}
+              <span className="block h-4 w-4">{SOCIAL_ICONS[key]}</span>
             </a>
           ))}
         </div>

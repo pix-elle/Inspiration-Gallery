@@ -101,6 +101,11 @@ body {
   --sidebar-w: 5rem; /* 80px — le plafond demandé */
 }
 
+/* Contrat à respecter : ces deux classes ne font que MASQUER, elles ne
+   posent jamais l'affichage d'un élément déplié. Un élément .sidebar-full
+   doit donc porter sa propre classe d'affichage (flex, block…), sinon il
+   retombe en `block` et ses flex-col / items-center / gap ne font plus rien —
+   en silence, et seulement dans l'état déplié. */
 .sidebar-mini {
   display: none;
 }
