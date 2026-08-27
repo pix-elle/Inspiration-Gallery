@@ -103,7 +103,11 @@ export function Sidebar({ settings }: { settings: Settings }) {
           <SidebarToggle />
         </div>
 
+        {/* Sépare les icônes de contenu — enveloppe, réseaux — des commandes
+            de l'interface. Même trait court que celui posé sous l'enveloppe,
+            pour que le rail garde un seul rythme. */}
         <div className="sidebar-mini flex-col items-center gap-3">
+          <hr className="w-6 border-foreground/10" />
           <ThemeToggle />
           <SidebarToggle />
         </div>
