@@ -21,8 +21,9 @@ Things only you can do — account setup, credentials, DNS. Check them off as yo
       - Later/production: connect a **custom domain** (e.g. `cdn.yoursite.com`)
         on the bucket so media is served through Cloudflare's CDN with caching
         → **c'est devenu la priorité n°1**, voir « Performance » plus bas :
-        mesuré le 26/08, `r2.dev` n'est pas mis en cache par le CDN, chaque
-        image repart chercher l'origine à 340 ms
+        mesuré le 26/08, `r2.dev` n'est pas mis en cache par le CDN et il est
+        limité en débit ; chaque image repart chercher l'origine à 340 ms.
+        Attention, ce n'est pas qu'un CNAME : R2 exige la zone chez Cloudflare
 - [x] Put the values in `web/.env.local` (and later in `ingest/.env`):
 
 ```bash
@@ -88,17 +89,90 @@ Les médias sortent de `pub-998667dd44be44f6bbe22f8ab32d2261.r2.dev`.
 **Cloudflare ne met pas ce domaine en cache sur son CDN** — il est prévu pour
 le développement. Deux appels successifs sur le même fichier : 0,336 s puis
 0,383 s, aucune accélération, et pas de `cf-cache-status` dans la réponse.
+La doc Cloudflare précise en plus qu'il est **limité en débit** et « à réserver
+au développement » : ce n'est pas seulement lent, c'est bridable.
 
 Les fichiers portent pourtant déjà `Cache-Control: public, max-age=31536000,
 immutable`. Ils sont parfaitement cachables ; personne ne les cache. Une
 douzaine d'images par écran à 340 ms au lieu de ~50 ms depuis l'edge.
 
-- [ ] Attacher un domaine (`cdn.nexus-studio.ch`) au bucket dans Cloudflare R2
-- [ ] Créer le CNAME correspondant chez **Infomaniak** (la zone DNS y est
-      autoritaire depuis la migration du 24/08)
+> ⚠️ **Ce n'est PAS un simple CNAME à poser chez Infomaniak**, contrairement à
+> ce qui était noté ici au départ. Un domaine personnalisé R2 exige que la zone
+> soit **dans le compte Cloudflare** qui héberge le bucket. Le mode
+> « partial CNAME », qui l'éviterait, est réservé à l'offre **Business**.
+> Il faut donc déplacer toute la zone `nexus-studio.ch` chez Cloudflare — la
+> même opération délicate qu'en août, avec les mails en jeu.
+
+#### Étapes, dans cet ordre
+
+**A. Sans risque — rien n'est actif tant que les NS ne bougent pas**
+
+- [ ] dash.cloudflare.com → **Add a domain** → `nexus-studio.ch` → offre
+      **Free** → méthode **serveurs de noms** (pas le CNAME partiel).
+      Utiliser **le compte qui héberge déjà le bucket R2**, sinon R2 ne pourra
+      pas se servir du domaine.
+- [ ] Laisser Cloudflare scanner, puis **vérifier l'import un par un**. Le scan
+      rate régulièrement des TXT. Les douze enregistrements attendus :
+
+      | Type  | Nom                      | Valeur                                          |
+      |-------|--------------------------|-------------------------------------------------|
+      | MX    | `nexus-studio.ch`        | `mta-gw.infomaniak.ch` · priorité 10            |
+      | TXT   | `nexus-studio.ch`        | `v=spf1 include:spf.infomaniak.ch -all`         |
+      | TXT   | `nexus-studio.ch`        | `lemlist-verif=16c905d`                          |
+      | TXT   | `_dmarc`                 | `v=DMARC1; p=none; rua=mailto:contact@nexus-studio.ch` |
+      | CNAME | `mail`                   | `mail.infomaniak.ch`                             |
+      | CNAME | `webmail`                | `webmail.infomaniak.ch`                          |
+      | CNAME | `smtp`                   | `mail.infomaniak.ch`                             |
+      | CNAME | `imap`                   | `mail.infomaniak.ch`                             |
+      | CNAME | `pop`                    | `mail.infomaniak.ch`                             |
+      | CNAME | `inspiration`            | `3a26c06af75983be.vercel-dns-017.com`           |
+      | CNAME | `send.send`              | `send.forge.rmta.net`                            |
+      | TXT   | `resend._domainkey.send` | la clé DKIM (`p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg…`) |
+
+- [ ] **Nuage GRIS (DNS only) sur `inspiration`** : Vercel gère déjà son
+      certificat et son CDN, le proxy Cloudflare ajouterait un intermédiaire de
+      trop. Gris aussi sur `mail`, `webmail`, `smtp`, `imap`, `pop` — le proxy
+      ne fait passer que du HTTP, jamais le trafic mail.
+
+**B. Irréversible — c'est là qu'on a failli couper les mails en août**
+
+- [ ] Désactiver DNSSEC chez Infomaniak. Il a été **réactivé** depuis la
+      migration d'août (`DS 33959 13 2 CF05…` au registre le 30/08), et
+      basculer les NS dans cet état provoque un `SERVFAIL` général — site *et*
+      mails.
+- [ ] Attendre que le DS disparaisse, **vérifier** avant d'avancer :
+
+      ```
+      dig DS nexus-studio.ch @a.nic.ch +short
+      ```
+
+      Tant que ça répond, ne pas continuer. Une fois vide, attendre encore une
+      heure (TTL du DS).
+- [ ] Basculer les serveurs de noms chez Infomaniak vers ceux de Cloudflare.
+- [ ] Vérifier la délégation et les mails :
+
+      ```
+      dig NS nexus-studio.ch @a.nic.ch
+      dig MX nexus-studio.ch +short
+      ```
+
+**C. Le CDN lui-même**
+
+- [ ] R2 → bucket `alessia-inspiration` → **Settings → Custom Domain** →
+      `cdn.nexus-studio.ch`. Cloudflare crée le CNAME tout seul, la zone étant
+      désormais chez lui.
+- [ ] Réactiver DNSSEC, **depuis Cloudflare** cette fois : il fournit son
+      propre DS à saisir chez Infomaniak.
 - [ ] Mettre `CDN_BASE_URL` à jour dans Vercel **et** dans `ingest/.env`
 - [ ] Réécrire les URL déjà en base — remplacement d'hôte sur `image_base`,
       `video_url`, `poster_url`. À préparer en SQL réversible, ~500 lignes.
+
+#### Alternative si le risque sur les mails gêne
+
+Un **domaine séparé pour les médias** (~10 €/an), placé entièrement chez
+Cloudflare. Zone vierge, aucun MX, aucun DKIM : la migration devient sans
+enjeu et `nexus-studio.ch` n'est jamais touché. Plus cher et moins élégant,
+mais ça supprime le seul vrai danger de l'opération.
 
 ### 2. Rendre l'accueil cachable à l'edge
 
@@ -158,6 +232,51 @@ la lightbox — alors que les images, elles, ont quatre variantes.
 > rien ne la lit. Piste abandonnée — et tant mieux : l'AV1 pèse moins mais se
 > décode bien plus cher en logiciel, ce qui aggraverait exactement ce
 > problème-ci sur une grille qui joue toute seule.
+
+## Recadrage 9:16 — décision en attente
+
+Le commit `0b85e21` **existe en local mais n'est pas poussé**. Il met toutes
+les tuiles de la grille au format 9:16.
+
+Contrairement à ce qu'on croyait, **aucune image n'était déjà conforme** : les
+248 dites « verticales » sont en 3:4 (0,74–0,75). Les 436 sont donc recadrées,
+les portraits de 25 % de leur largeur et les paysages de 58 %.
+
+Le recadrage se fait à l'affichage, donc le navigateur télécharge des pixels
+qu'il jette :
+
+| | 12 tuiles, mobile |
+|---|---|
+| Mosaïque d'origine | 0,12 Mo |
+| Recadrage à l'affichage (`0b85e21`) | **1,06 Mo** — ×9 |
+| Recadrage à la source | **0,31 Mo** — même rendu |
+
+Il restera 2,5× l'original quoi qu'il arrive : une tuile 9:16 montre 2,37 fois
+plus de pixels qu'une 4:3 de même largeur. On affiche plus, on paie plus.
+
+- [ ] Trancher : pousser tel quel, attendre le CDN, ou refaire à la source
+- [ ] Si « à la source » : variantes 400 et 800 en 9:16 pour la grille, 1200 et
+      2000 en cadrage plein **pour la lightbox** — sinon on perd l'intérêt
+      d'ouvrir une photo. ~30 % de stockage en plus, beaucoup moins de bande
+      passante. `refresh-images.js` sert de modèle pour le rattrapage.
+
+## Netteté — 9 items du 22 août
+
+Corrigé le 29/08 : dix items avaient en base `4032x3024` alors que leurs
+fichiers étaient en portrait 3:4 — la grille réservait une tuile paysage et
+`object-cover` n'en montrait qu'une bande. Reliquat du bug EXIF que
+`refresh-images.js` avait traité côté fichiers mais pas côté base. Dimensions
+remises à `3024x4032`, vérifié 436/436 cohérentes. Sauvegarde des anciennes
+valeurs dans le scratchpad de la session.
+
+Reste un défaut mineur sur neuf d'entre eux :
+
+- [ ] Leurs fichiers portent l'ancienne convention — `400.avif` fait en réalité
+      300 px de large, mais le `srcset` le déclare `400w`. Le navigateur croit
+      obtenir plus de détail qu'il n'en reçoit, d'où un léger flou. Réencodage
+      impossible en l'état : **aucun de ces items n'a conservé son fichier
+      source** sur R2, il faudrait les originaux depuis le disque (shooting du
+      22 août).
 
 ## Divers en attente
 
