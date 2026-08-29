@@ -4,10 +4,13 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 // mesure le conteneur, ce que le CSS ne sait pas faire. 1 colonne en dessous
 // de sm, 2 jusqu'à lg, 3 au-delà. Un squelette qui n'a pas le nombre de
 // colonnes de la grille qu'il annonce se trahit au moment de la bascule.
+// Hauteurs égales depuis que les tuiles ont toutes le même format : un
+// squelette irrégulier annoncerait une mosaïque qui n'existe plus, et le
+// décalage se verrait au moment de la bascule.
 const COLUMNS = [
-  ["h-52", "h-72", "h-44", "h-60"],
-  ["h-64", "h-48", "h-64", "h-56"],
-  ["h-44", "h-80", "h-52", "h-72"],
+  ["h-64", "h-64", "h-64", "h-64"],
+  ["h-64", "h-64", "h-64", "h-64"],
+  ["h-64", "h-64", "h-64", "h-64"],
 ];
 
 // Les hauteurs sont fixes et volontairement irrégulières. Des tuiles toutes

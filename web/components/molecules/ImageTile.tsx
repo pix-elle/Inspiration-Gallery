@@ -1,19 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import { coverScale } from "@/lib/media";
 import type { Item } from "@/lib/types";
 
 const ALL_WIDTHS = [400, 800, 1200, 2000];
-// Approximation des seuils de useColumnCount. « Approximation » parce que
-// sizes s'exprime en unités de fenêtre et ne peut pas savoir si la barre
-// latérale est repliée — la même fenêtre donne deux largeurs de tuile. On
-// arrondit vers le haut : sur-estimer coûte quelques octets, sous-estimer
-// rendrait l'image floue, ce qui ne se rattrape pas.
-const SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+// Part de la fenêtre occupée par une tuile, avant recadrage. Approximation
+// des seuils de useColumnCount : sizes s'exprime en unités de fenêtre et ne
+// peut pas savoir si la barre latérale est repliée — la même fenêtre donne
+// deux largeurs de tuile. On arrondit vers le haut : sur-estimer coûte
+// quelques octets, sous-estimer rendrait l'image floue, ce qui ne se rattrape
+// pas.
+const BASE_VW: [maxWidth: number | null, vw: number][] = [
+  [640, 100],
+  [1024, 50],
+  [null, 33],
+];
+
+// Multiplié par l'agrandissement qu'impose le recadrage 9:16, sinon le
+// navigateur choisirait une variante calibrée sur la largeur de la tuile
+// pour une image rendue deux fois plus large.
+function sizesFor(scale: number): string {
+  return BASE_VW.map(([max, vw]) => {
+    const value = `${Math.ceil(vw * scale)}vw`;
+    return max ? `(max-width: ${max}px) ${value}` : value;
+  }).join(", ");
+}
 
 export function ImageTile({ item }: { item: Item }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  const sizes = sizesFor(coverScale(item.width, item.height));
 
   // The ingest CLI never upscales, so only widths <= the original exist.
   const widths = ALL_WIDTHS.filter((w) => w <= item.width);
@@ -39,8 +57,8 @@ export function ImageTile({ item }: { item: Item }) {
         />
       )}
       <picture>
-        <source type="image/avif" srcSet={srcset("avif")} sizes={SIZES} />
-        <source type="image/webp" srcSet={srcset("webp")} sizes={SIZES} />
+        <source type="image/avif" srcSet={srcset("avif")} sizes={sizes} />
+        <source type="image/webp" srcSet={srcset("webp")} sizes={sizes} />
         <img
           src={`${item.image_base}/${fallbackWidth}.webp`}
           alt={item.title ?? ""}

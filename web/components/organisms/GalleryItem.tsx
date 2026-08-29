@@ -13,9 +13,17 @@ type GalleryItemProps = {
   transitionName: string;
 };
 
-// Aspect ratio + dominant color are reserved before any media loads,
-// so tiles never shift the layout. Clicking opens the in-memory lightbox
-// (instant morph); the href is kept for middle-click, share and SEO.
+// Toutes les tuiles de la grille adoptent le même format vertical, quel que
+// soit le cadrage d'origine du média. Le recadrage est fait à l'affichage
+// (object-cover dans ImageTile et VideoTile) et non sur les fichiers : les
+// variantes stockées sur R2 restent intactes, et la lightbox continue
+// d'afficher la photo entière puisqu'elle lit le ratio réel de l'item.
+// Repasser à la mosaïque d'origine = remettre `item.width / item.height`.
+const TILE_ASPECT = 9 / 16;
+
+// Dominant color is reserved before any media loads, so tiles never shift
+// the layout. Clicking opens the in-memory lightbox (instant morph); the
+// href is kept for middle-click, share and SEO.
 export function GalleryItem({ item, onOpen, transitionName }: GalleryItemProps) {
   return (
     <a
@@ -31,7 +39,7 @@ export function GalleryItem({ item, onOpen, transitionName }: GalleryItemProps) 
       <div
         className="overflow-hidden rounded-lg"
         style={{
-          aspectRatio: item.width / item.height,
+          aspectRatio: TILE_ASPECT,
           backgroundColor: item.dominant_color ?? "#1a1a1a",
           viewTransitionName: transitionName,
         }}

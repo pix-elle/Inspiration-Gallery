@@ -4,6 +4,11 @@ import type { Item } from "./types";
 // so relative heights (1/aspect-ratio) are enough — no pixel measuring needed.
 // Same input + column count → same layout on server and client, which is what
 // makes SSR hydration shift-free.
+//
+// Depuis que GalleryItem impose un format unique aux tuiles, toutes les
+// hauteurs sont égales et cette distribution revient à un tour de rôle. Le
+// calcul est conservé tel quel : il redeviendrait utile le jour où les tuiles
+// reprendraient leur cadrage d'origine, et il ne coûte rien.
 export function distribute(items: Item[], columnCount: number): Item[][] {
   const columns: Item[][] = Array.from({ length: columnCount }, () => []);
   const heights = new Array(columnCount).fill(0);
