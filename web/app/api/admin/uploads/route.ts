@@ -46,7 +46,25 @@ export async function POST(req: Request) {
   // The uploaded original is kept: it's what a re-encode would start from,
   // and it means a change of compression settings never needs the file again.
   const key = `sources/${nanoid(12)}${extension}`;
-  const url = await presignUpload(key, contentType);
+
+  // Signer demande les quatre S3_*. S'il en manque une — le cas classique
+  // d'un déploiement où elles n'ont pas été reportées — presignUpload lève,
+  // et une exception non rattrapée dans une route Next repart en 500 au corps
+  // vide. Le navigateur n'a alors plus rien à lire, et la modal affiche une
+  // erreur de parsing à la place du motif.
+  let url: string;
+  try {
+    url = await presignUpload(key, contentType);
+  } catch (err) {
+    console.error("Signature R2 impossible", err);
+    return Response.json(
+      {
+        error:
+          "Le stockage R2 n'a pas répondu — vérifie les variables S3_* du déploiement",
+      },
+      { status: 500 }
+    );
+  }
 
   return Response.json({ url, key });
 }

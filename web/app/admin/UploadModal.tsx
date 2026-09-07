@@ -41,6 +41,31 @@ function putWithProgress(
   });
 }
 
+// Une réponse d'erreur n'est pas forcément du JSON. Une exception non
+// rattrapée dans une route Next renvoie un 500 au corps *vide*, et une panne
+// côté edge renvoie du HTML. Appeler .json() avant de regarder le statut
+// remplace donc « Envoi refusé (500) » par « Unexpected end of JSON input » :
+// le vrai motif disparaît, et le message affiché ne désigne plus rien.
+async function readJson(
+  res: Response,
+  fallback: string
+): Promise<Record<string, string>> {
+  const text = await res.text();
+  let body: Record<string, string> | null = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as Record<string, string>;
+    } catch {
+      // Corps non-JSON : le texte brut est plus parlant que rien, tronqué
+      // parce qu'une page d'erreur entière n'a pas sa place dans une ligne.
+      body = { error: `${fallback} (HTTP ${res.status}) — ${text.slice(0, 120)}` };
+    }
+  }
+  if (!res.ok) throw new Error(body?.error ?? `${fallback} (HTTP ${res.status})`);
+  if (!body) throw new Error(`${fallback} — le serveur a répondu ${res.status} sans rien dire`);
+  return body;
+}
+
 type State = "pending" | "uploading" | "creating" | "done" | "error";
 type Staged = {
   key: string;
@@ -153,8 +178,7 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contentType: item.file.type, size: item.file.size }),
     });
-    const presigned = await ask.json();
-    if (!ask.ok) throw new Error(presigned.error ?? "Envoi refusé");
+    const presigned = await readJson(ask, "Envoi refusé");
 
     await putWithProgress(
       presigned.url,
@@ -176,8 +200,7 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
         brandName: brandId ? undefined : newBrand,
       }),
     });
-    const created = await create.json();
-    if (!create.ok) throw new Error(created.error ?? "Création refusée");
+    await readJson(create, "Création refusée");
 
     patch(item.key, { state: "done", progress: 100 });
   }
