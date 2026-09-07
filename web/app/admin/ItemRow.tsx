@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, RotateCw, Trash2, TriangleAlert } from "lucide-react";
+import { INDUSTRIES, INDUSTRY_LABELS, PROJECT_TYPES } from "@/lib/taxonomy";
 import type { Brand, Item } from "@/lib/types";
 
 const STATUS_LABEL: Record<Item["status"], string> = {
@@ -62,6 +63,12 @@ export function ItemRow({ item, brands, onChanged, selected, onSelect }: Props) 
   const poster =
     item.poster_url ??
     (item.image_base ? `${item.image_base}/400.webp` : null);
+
+  // L'industrie affichée est celle qui s'applique : la dérogation de l'item
+  // si elle existe, sinon celle de sa marque. Le menu montre donc toujours
+  // ce que la galerie utilisera, et non un tiret trompeur sur un item
+  // pourtant classé par sa marque.
+  const inherited = brands.find((b) => b.id === item.brand_id)?.industry ?? null;
 
   return (
     <tr
@@ -126,8 +133,29 @@ export function ItemRow({ item, brands, onChanged, selected, onSelect }: Props) 
           className="rounded border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none hover:border-foreground/15 focus-visible:border-foreground/40"
         >
           <option value="">—</option>
-          <option value="popup">Pop-up</option>
-          <option value="store">Magasin</option>
+          {PROJECT_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </td>
+
+      <td className="py-2 pr-3">
+        <select
+          defaultValue={item.industry ?? ""}
+          onChange={(e) => patch({ industry: e.target.value })}
+          disabled={busy}
+          // Italique quand la valeur est héritée : d'un coup d'œil sur la
+          // colonne, on voit lesquelles ont été forcées à la main.
+          className={`rounded border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none hover:border-foreground/15 focus-visible:border-foreground/40 ${
+            item.industry ? "" : "italic text-foreground/60"
+          }`}
+        >
+          <option value="">
+            {inherited ? INDUSTRY_LABELS[inherited] ?? "—" : "—"}
+          </option>
+          {INDUSTRIES.map((i) => (
+            <option key={i.value} value={i.value}>{i.label}</option>
+          ))}
         </select>
       </td>
 

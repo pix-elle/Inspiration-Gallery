@@ -7,6 +7,7 @@ import {
   megabytes,
   rejectionReason,
 } from "@/lib/media-limits";
+import { INDUSTRIES, INDUSTRY_LABELS, PROJECT_TYPES } from "@/lib/taxonomy";
 import type { Brand } from "@/lib/types";
 
 // Deux à trois envois de front. Vingt fichiers de 40 Mo lancés ensemble
@@ -124,6 +125,9 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
   const [projectType, setProjectType] = useState("");
   const [brandId, setBrandId] = useState("");
   const [newBrand, setNewBrand] = useState("");
+  // Dérogation seulement. Vide — le cas normal — laisse l'item hériter du
+  // secteur de sa marque, ce qui évite d'avoir à le repréciser à chaque lot.
+  const [industry, setIndustry] = useState("");
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
 
@@ -196,6 +200,7 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
         // Pas de titre : en demander un par fichier sur un lot de vingt n'a
         // pas de sens, et la table les édite en ligne juste après.
         projectType,
+        industry,
         brandId: brandId || undefined,
         brandName: brandId ? undefined : newBrand,
       }),
@@ -232,6 +237,11 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
     setFinished(true);
     onDone();
   }
+
+  // Ce dont le lot hériterait si on ne touche pas au menu. Une marque
+  // encore à créer n'a évidemment pas de secteur : le menu le dit alors sans
+  // le nommer.
+  const inherited = brands.find((b) => b.id === brandId)?.industry ?? null;
 
   const done = staged.filter((s) => s.state === "done").length;
   const failed = staged.filter((s) => s.state === "error").length;
@@ -400,8 +410,9 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
                 className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm text-foreground outline-none focus-visible:border-foreground/40"
               >
                 <option value="">—</option>
-                <option value="popup">Pop-up</option>
-                <option value="store">Magasin</option>
+                {PROJECT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </label>
 
@@ -429,6 +440,28 @@ export function UploadModal({ brands, initialFiles, onClose, onDone }: Props) {
                 className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-foreground/40 sm:col-span-2"
               />
             )}
+
+            {/* L'industrie se règle sur la marque, dans l'onglet Marques, et
+                tous ses items la suivent. Ce menu ne sert donc qu'à déroger,
+                et il annonce d'abord ce dont on hériterait sans lui. */}
+            <label className="flex flex-col gap-1 text-xs text-foreground/60 sm:col-span-2">
+              Industrie — pour tout le lot
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                disabled={running}
+                className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm text-foreground outline-none focus-visible:border-foreground/40"
+              >
+                <option value="">
+                  {inherited
+                    ? `Héritée de la marque — ${INDUSTRY_LABELS[inherited]}`
+                    : "Héritée de la marque"}
+                </option>
+                {INDUSTRIES.map((i) => (
+                  <option key={i.value} value={i.value}>{i.label}</option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
 

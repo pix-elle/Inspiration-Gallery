@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, X } from "lucide-react";
 import { ICONS } from "@/components/atoms/icons/nav";
 import { useReportFilterPending } from "@/components/organisms/FilterTransition";
+import { INDUSTRY_LABELS, PROJECT_TYPE_LABELS } from "@/lib/taxonomy";
 import type { FilterOptions, GalleryFilters } from "@/lib/types";
 
 // Sits above the grid rather than in the sidebar. A filter acts on the grid,
@@ -25,10 +26,6 @@ import type { FilterOptions, GalleryFilters } from "@/lib/types";
 // works, and the filtering happens in SQL rather than over the twelve items
 // that happen to be loaded.
 
-const PROJECT_LABELS: Record<string, string> = {
-  popup: "Pop-up",
-  store: "Boutique",
-};
 const TYPE_LABELS: Record<string, string> = {
   all: "Tout",
   image: "Images",
@@ -49,6 +46,7 @@ const TYPE_ORDER = ["video", "image"] as const;
 // `type` n'y figure pas : ses onglets passent par selectType, pas par apply.
 const FIELD: Record<string, keyof GalleryFilters> = {
   projet: "projectType",
+  industrie: "industry",
   marque: "brand",
   lieu: "city",
 };
@@ -125,7 +123,12 @@ export function FilterBar({ options, active }: Props) {
     if (type) next.set("type", type);
     const query = next.toString();
     startTransition(() => {
-      applyOptimistic({ projectType: null, brand: null, city: null });
+      applyOptimistic({
+        projectType: null,
+        industry: null,
+        brand: null,
+        city: null,
+      });
       router.push(query ? `/?${query}` : "/", { scroll: false });
     });
   }
@@ -140,9 +143,12 @@ export function FilterBar({ options, active }: Props) {
 
   // Le type est exclu : un segmented control est toujours sur une valeur, le
   // compter rendrait « Tout effacer » visible en permanence.
-  const activeCount = [shown.projectType, shown.brand, shown.city].filter(
-    Boolean
-  ).length;
+  const activeCount = [
+    shown.projectType,
+    shown.industry,
+    shown.brand,
+    shown.city,
+  ].filter(Boolean).length;
 
   const totalCount = options.types.reduce((sum, t) => sum + t.count, 0);
   const typeTabs = [
@@ -178,22 +184,52 @@ export function FilterBar({ options, active }: Props) {
           </Pill>
         ))}
 
-        {options.projectTypes.length > 0 && <Separator />}
+        {(options.projectTypes.length > 0 ||
+          options.industries.length > 0 ||
+          options.brands.length > 0 ||
+          options.cities.length > 0) && <Separator />}
 
-        {options.projectTypes.map(({ value, count }) => (
-          <Pill
-            key={value}
-            active={shown.projectType === value}
-            onClick={() => apply("projet", value)}
-            onPrefetch={() => prefetch("projet", value)}
-          >
-            {PROJECT_LABELS[value]}
-            <Count n={count} />
-          </Pill>
-        ))}
+        {/* Menu et non pilules : le vocabulaire est passé de deux formats à
+            sept, et sept pilules poussaient marque et lieu hors de l'écran
+            sur un portable. Les valeurs sans contenu publié ne remontent pas
+            de getFilterOptions, donc le menu ne propose jamais un filtre qui
+            donnerait une grille vide. */}
+        {options.projectTypes.length > 0 && (
+          <Dropdown
+            label="Projet"
+            selected={
+              shown.projectType
+                ? PROJECT_TYPE_LABELS[shown.projectType] ?? shown.projectType
+                : null
+            }
+            items={options.projectTypes.map((p) => ({
+              value: p.value,
+              label: PROJECT_TYPE_LABELS[p.value] ?? p.value,
+              count: p.count,
+            }))}
+            activeValue={shown.projectType ?? null}
+            onSelect={(v) => apply("projet", v)}
+            onPrefetch={(v) => prefetch("projet", v)}
+          />
+        )}
 
-        {(options.brands.length > 0 || options.cities.length > 0) && (
-          <Separator />
+        {options.industries.length > 0 && (
+          <Dropdown
+            label="Industrie"
+            selected={
+              shown.industry
+                ? INDUSTRY_LABELS[shown.industry] ?? shown.industry
+                : null
+            }
+            items={options.industries.map((i) => ({
+              value: i.value,
+              label: INDUSTRY_LABELS[i.value] ?? i.value,
+              count: i.count,
+            }))}
+            activeValue={shown.industry ?? null}
+            onSelect={(v) => apply("industrie", v)}
+            onPrefetch={(v) => prefetch("industrie", v)}
+          />
         )}
 
         {/* Brands and cities are dropdowns, not pills: there are thirty of the

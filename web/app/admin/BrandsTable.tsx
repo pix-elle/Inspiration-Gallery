@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, Merge, Search, Trash2 } from "lucide-react";
 import { slugify } from "@/lib/slug";
+import { INDUSTRIES } from "@/lib/taxonomy";
 import type { BrandWithCount } from "@/lib/queries";
 
 type Props = { initialBrands: BrandWithCount[]; onChanged: () => void };
@@ -20,6 +21,10 @@ export function BrandsTable({ initialBrands, onChanged }: Props) {
     { from: BrandWithCount; into: { id: string; name: string }; name: string } | null
   >(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Le reste à faire, annoncé en une ligne : la passe de classement est
+  // finie quand ce nombre tombe à zéro.
+  const unclassified = brands.filter((b) => !b.industry).length;
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,6 +59,28 @@ export function BrandsTable({ initialBrands, onChanged }: Props) {
         return;
       }
       if (!res.ok) throw new Error(data.error ?? "Renommage refusé");
+      apply(data.brands);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Une écriture ici reclasse d'un coup tous les items de la marque : c'est
+  // le geste qui remplace un passage sur chaque photo. Pas de confirmation,
+  // rien n'est détruit et le menu revient en arrière aussi vite.
+  async function classify(id: string, industry: string) {
+    setBusy(id);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/brands", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, industry }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Classement refusé");
       apply(data.brands);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -118,7 +145,10 @@ export function BrandsTable({ initialBrands, onChanged }: Props) {
 
       <p className="text-sm text-foreground/60">
         {brands.length} marque{brands.length > 1 ? "s" : ""} — le nom
-        s&apos;enregistre en quittant le champ.
+        s&apos;enregistre en quittant le champ, l&apos;industrie au choix.
+        {unclassified > 0 && (
+          <> {unclassified} sans industrie.</>
+        )}
       </p>
 
       {error && (
@@ -158,10 +188,11 @@ export function BrandsTable({ initialBrands, onChanged }: Props) {
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-left">
+        <table className="w-full min-w-[44rem] text-left">
           <thead>
             <tr className="text-xs text-foreground/50">
               <th className="pb-2 font-medium">Nom</th>
+              <th className="pb-2 font-medium">Industrie</th>
               <th className="pb-2 font-medium">Identifiant d&apos;URL</th>
               <th className="w-20 pb-2 font-medium">Éléments</th>
               <th className="w-16 pb-2" />
@@ -188,6 +219,21 @@ export function BrandsTable({ initialBrands, onChanged }: Props) {
                       disabled={busy === brand.id}
                       className="w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none hover:border-foreground/15 focus-visible:border-foreground/40"
                     />
+                  </td>
+
+                  <td className="py-2 pr-3">
+                    <select
+                      value={brand.industry ?? ""}
+                      onChange={(e) => classify(brand.id, e.target.value)}
+                      disabled={busy === brand.id}
+                      aria-label={`Industrie de ${brand.name}`}
+                      className="rounded border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none hover:border-foreground/15 focus-visible:border-foreground/40"
+                    >
+                      <option value="">—</option>
+                      {INDUSTRIES.map((i) => (
+                        <option key={i.value} value={i.value}>{i.label}</option>
+                      ))}
+                    </select>
                   </td>
 
                   <td className="py-2 pr-3 text-sm text-foreground/50">

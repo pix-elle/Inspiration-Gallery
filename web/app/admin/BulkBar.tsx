@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Eye, EyeOff, Loader2, RotateCw, Trash2, X } from "lucide-react";
+import { INDUSTRIES, PROJECT_TYPES } from "@/lib/taxonomy";
 import type { Brand, Item } from "@/lib/types";
 
 type Props = {
@@ -29,10 +30,13 @@ export function BulkBar({ selected, brands, onClear, onDone }: Props) {
     setBusy(label);
     setReport(null);
     try {
-      // Le menu envoie __none__ pour « retirer la marque » : brandId vide est
-      // déjà la valeur de l'option d'invite, il fallait les distinguer.
-      const payload =
-        body.brandId === "__none__" ? { ...body, brandId: null } : body;
+      // Les menus envoient __none__ pour « vider ce champ » : la chaîne vide
+      // est déjà la valeur de l'option d'invite, qui ne déclenche rien, il
+      // fallait donc les distinguer. Côté serveur, null et "" reviennent au
+      // même — asProjectType et asIndustry ramènent l'un comme l'autre à null.
+      const payload = Object.fromEntries(
+        Object.entries(body).map(([k, v]) => [k, v === "__none__" ? null : v])
+      );
       const res = await fetch("/api/admin/items/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,8 +130,26 @@ export function BulkBar({ selected, brands, onClear, onDone }: Props) {
           className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm outline-none"
         >
           <option value="">Type…</option>
-          <option value="popup">Pop-up</option>
-          <option value="store">Magasin</option>
+          <option value="__none__">— Aucun type —</option>
+          {PROJECT_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+
+        {/* Le secteur se règle normalement sur la marque, dans l'onglet
+            Marques. Ce menu-ci force une dérogation sur les items choisis —
+            utile pour une collaboration, ou pour des items sans marque. */}
+        <select
+          defaultValue=""
+          disabled={disabled}
+          onChange={(e) => e.target.value && run("industry", { action: "update", industry: e.target.value })}
+          className="rounded-md border border-foreground/15 bg-transparent px-2 py-1.5 text-sm outline-none"
+        >
+          <option value="">Industrie…</option>
+          <option value="__none__">— Héritée de la marque —</option>
+          {INDUSTRIES.map((i) => (
+            <option key={i.value} value={i.value}>{i.label}</option>
+          ))}
         </select>
 
         <button type="button" disabled={disabled} className={chip}

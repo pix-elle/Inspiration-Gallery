@@ -59,7 +59,12 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
   // lisent tous `filtered`. C'est ce qui garantit qu'on n'agit jamais sur une
   // ligne qu'on ne voit pas — et ce qui permettra de brancher une pagination
   // sans revoir la sélection.
-  const filtered = useMemo(() => applyFilters(items, filters), [items, filters]);
+  // brands entre dans le calcul : le secteur d'un item peut venir de sa
+  // marque, donc filtrer dessus demande de connaître les deux.
+  const filtered = useMemo(
+    () => applyFilters(items, filters, brands),
+    [items, filters, brands]
+  );
 
   const selected = useMemo(
     () => filtered.filter((i) => selectedIds.has(i.id)),
@@ -202,7 +207,7 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
         </p>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-left">
+          <table className="w-full min-w-[52rem] text-left">
             <thead>
               <tr className="text-xs text-foreground/50">
                 <th className="w-8 pb-2 font-medium">
@@ -225,6 +230,7 @@ export function AdminTable({ initialItems, initialBrands }: Props) {
                 <th className="w-14 pb-2 font-medium" />
                 <th className="pb-2 font-medium">Titre</th>
                 <th className="pb-2 font-medium">Type</th>
+                <th className="pb-2 font-medium">Industrie</th>
                 <th className="pb-2 font-medium">Marque</th>
                 <th className="pb-2 font-medium">Statut</th>
                 <th className="pb-2" />

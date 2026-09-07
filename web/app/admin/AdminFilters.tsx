@@ -1,14 +1,17 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import { INDUSTRIES } from "@/lib/taxonomy";
 import type { Brand, Item } from "@/lib/types";
 
 export type Filters = {
   /** "" = tous */
   status: "" | Item["status"];
   /** Champ manquant — c'est le filtre qui sert à finir un import. */
-  missing: "" | "brand" | "projectType";
+  missing: "" | "brand" | "projectType" | "industry";
   brand: string;
+  /** Le secteur effectif : dérogation de l'item, sinon celui de sa marque. */
+  industry: string;
   query: string;
 };
 
@@ -16,20 +19,41 @@ export const EMPTY_FILTERS: Filters = {
   status: "",
   missing: "",
   brand: "",
+  industry: "",
   query: "",
 };
 
 export function isFiltering(f: Filters): boolean {
-  return f.status !== "" || f.missing !== "" || f.brand !== "" || f.query.trim() !== "";
+  return (
+    f.status !== "" ||
+    f.missing !== "" ||
+    f.brand !== "" ||
+    f.industry !== "" ||
+    f.query.trim() !== ""
+  );
 }
 
-export function applyFilters(items: Item[], f: Filters): Item[] {
+/**
+ * Le secteur qui s'applique réellement : celui posé sur l'item s'il y en a
+ * un, sinon celui de sa marque. C'est la même règle que le coalesce() des
+ * requêtes SQL — d'où la table des marques en argument, sans laquelle le
+ * filtre « sans industrie » signalerait comme incomplets des items que leur
+ * marque classe très bien.
+ */
+export function effectiveIndustry(item: Item, brands: Brand[]): string | null {
+  if (item.industry) return item.industry;
+  return brands.find((b) => b.id === item.brand_id)?.industry ?? null;
+}
+
+export function applyFilters(items: Item[], f: Filters, brands: Brand[]): Item[] {
   const q = f.query.trim().toLowerCase();
   return items.filter((item) => {
     if (f.status && item.status !== f.status) return false;
     if (f.missing === "brand" && item.brand_id) return false;
     if (f.missing === "projectType" && item.project_type) return false;
+    if (f.missing === "industry" && effectiveIndustry(item, brands)) return false;
     if (f.brand && item.brand_id !== f.brand) return false;
+    if (f.industry && effectiveIndustry(item, brands) !== f.industry) return false;
     if (q && !(item.title ?? "").toLowerCase().includes(q)) return false;
     return true;
   });
@@ -87,6 +111,7 @@ export function AdminFilters({ filters, onChange, onReset, brands, shown, total 
         <option value="">Complets ou non</option>
         <option value="brand">Sans marque</option>
         <option value="projectType">Sans type de projet</option>
+        <option value="industry">Sans industrie</option>
       </select>
 
       {brands.length > 0 && (
@@ -102,6 +127,18 @@ export function AdminFilters({ filters, onChange, onReset, brands, shown, total 
           ))}
         </select>
       )}
+
+      <select
+        value={filters.industry}
+        onChange={(e) => onChange({ industry: e.target.value })}
+        aria-label="Filtrer par industrie"
+        className={select}
+      >
+        <option value="">Toutes les industries</option>
+        {INDUSTRIES.map((i) => (
+          <option key={i.value} value={i.value}>{i.label}</option>
+        ))}
+      </select>
 
       {active && (
         <>
