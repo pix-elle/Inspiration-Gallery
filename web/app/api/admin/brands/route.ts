@@ -1,4 +1,5 @@
 import { requireApiSession } from "@/lib/dal";
+import { asIndustry } from "@/lib/taxonomy";
 import {
   deleteBrand,
   findBrandConflict,
@@ -6,6 +7,7 @@ import {
   mergeBrands,
   renameBrand,
   revalidateGallery,
+  setBrandIndustry,
   slugify,
 } from "@/lib/queries";
 
@@ -31,9 +33,24 @@ export async function PATCH(req: Request) {
   }
 
   const id = String(body.id ?? "");
+  if (!id) return Response.json({ error: "Marque manquante" }, { status: 400 });
+
+  // Le secteur se pose seul, sans toucher au nom : c'est ce qui permet de
+  // classer les trente-huit marques d'affilée sans risquer de renommer.
+  // Reclasser une marque reclasse tous ses items d'un coup, d'où le
+  // revalidate — la galerie publique filtre là-dessus.
+  if ("industry" in body) {
+    const brand = await setBrandIndustry(id, asIndustry(body.industry));
+    if (!brand) {
+      return Response.json({ error: "Marque introuvable" }, { status: 404 });
+    }
+    revalidateGallery();
+    return Response.json({ brand, brands: await getBrandsWithCounts() });
+  }
+
   const name = String(body.name ?? "").trim();
-  if (!id || !name) {
-    return Response.json({ error: "Marque ou nom manquant" }, { status: 400 });
+  if (!name) {
+    return Response.json({ error: "Nom manquant" }, { status: 400 });
   }
 
   const slug = slugify(name);

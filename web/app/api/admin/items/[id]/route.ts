@@ -7,9 +7,9 @@ import {
   revalidateGallery,
   updateItem,
 } from "@/lib/queries";
-import type { ItemStatus, ProjectType } from "@/lib/types";
+import { asIndustry, asProjectType } from "@/lib/taxonomy";
+import type { ItemStatus } from "@/lib/types";
 
-const PROJECT_TYPES: ProjectType[] = ["popup", "store"];
 // Only these two are a decision Alessia makes. "processing" and "failed"
 // describe where the encoder got to, and are written by the runner alone.
 const SETTABLE_STATUS: ItemStatus[] = ["published", "unpublished"];
@@ -37,12 +37,10 @@ export async function PATCH(req: Request, { params }: Context) {
   if ("description" in body) {
     edits.description = String(body.description ?? "").trim() || null;
   }
-  if ("projectType" in body) {
-    const value = String(body.projectType ?? "");
-    edits.projectType = PROJECT_TYPES.includes(value as ProjectType)
-      ? (value as ProjectType)
-      : null;
-  }
+  if ("projectType" in body) edits.projectType = asProjectType(body.projectType);
+  // "" remet l'item sur l'industrie de sa marque : c'est l'option « hérité »
+  // du menu, et asIndustry la ramène à null sans traitement particulier.
+  if ("industry" in body) edits.industry = asIndustry(body.industry);
   if ("brandId" in body) {
     edits.brandId = body.brandId ? String(body.brandId) : null;
   } else if ("brandName" in body) {

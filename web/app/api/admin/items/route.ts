@@ -8,9 +8,7 @@ import {
   getAdminItems,
   revalidateGallery,
 } from "@/lib/queries";
-import type { ProjectType } from "@/lib/types";
-
-const PROJECT_TYPES: ProjectType[] = ["popup", "store"];
+import { asIndustry, asProjectType } from "@/lib/taxonomy";
 
 export async function GET() {
   const { session, response } = await requireApiSession();
@@ -72,10 +70,10 @@ export async function POST(req: Request) {
   const title = String(body.title ?? "").trim() || null;
   const description = String(body.description ?? "").trim() || null;
 
-  const rawType = String(body.projectType ?? "");
-  const projectType = PROJECT_TYPES.includes(rawType as ProjectType)
-    ? (rawType as ProjectType)
-    : null;
+  const projectType = asProjectType(body.projectType);
+  // Presque toujours null : l'industrie vient de la marque. Ce champ n'est
+  // renseigné que si la modal a servi à déroger explicitement.
+  const industry = asIndustry(body.industry);
 
   // Either an existing brand, or a name typed in the field — the second case
   // creates it, or reuses an existing one whose slug matches.
@@ -100,6 +98,7 @@ export async function POST(req: Request) {
       title,
       description,
       projectType,
+      industry,
       brandId,
       sourceKey,
     });

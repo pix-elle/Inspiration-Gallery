@@ -10,6 +10,7 @@
 //   node worker/import-folder.js ~/Downloads/boutiques --limit 8
 //   node worker/import-folder.js ~/Downloads/boutiques --tags inspiration --creator "Alessia"
 //   node worker/import-folder.js ~/Downloads/boutiques --brand-from-folder --project-type store
+//   node worker/import-folder.js ~/Downloads/others --project-type store --industry food
 //
 // Walks the folder recursively. The name of the folder a file sits in
 // becomes a tag (and the title, when the filename is a camera name like
@@ -33,6 +34,20 @@ import { readLocation } from "../lib/geo.js";
 import { insertItem, existingImportKeys, findOrCreateBrand } from "../lib/db.js";
 import { storageMode } from "../lib/storage.js";
 
+// Le vocabulaire de classement. Sa source de vérité est
+// web/lib/taxonomy.ts, qui porte aussi les libellés affichés — ce paquet-ci
+// est un projet Node distinct, en JS, et ne peut pas importer ce fichier
+// TypeScript. Les valeurs sont donc recopiées, et c'est sans danger : les
+// contraintes CHECK de db/schema.sql rejettent bruyamment toute divergence,
+// dès la première ligne insérée.
+const PROJECT_TYPES = [
+  "store", "popup", "shop_in_shop", "window", "exhibition", "roadshow", "event",
+];
+const INDUSTRIES = [
+  "fashion", "sport", "watches", "accessories", "beauty", "food", "tech",
+  "toys", "home", "department_store", "culture",
+];
+
 // "IMG_2812 2.MOV", "DSC00413.jpg", "VID_20240115.mp4"… — a camera dumped
 // this name, it carries no meaning worth showing in the gallery.
 const CAMERA_NAME = /^(img|dsc|vid|mvi|pxl|photo|video|screen ?recording)[\s_-]*\d/i;
@@ -47,6 +62,10 @@ const flags = {
   category: null,
   videosOnly: false,
   projectType: null,
+  // Le secteur se pose normalement sur la marque, depuis le back-office, et
+  // tous ses items en héritent. Ce drapeau ne sert qu'aux dossiers qui n'ont
+  // pas de marque commune — « others », plein de cafés et de restaurants.
+  industry: null,
   brandFromFolder: false,
   // Some folders are filing, not meaning: "a trier", "others", "fails".
   // Using them as titles produces a gallery of items all called "A trier".
@@ -61,6 +80,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--brand-from-folder") flags.brandFromFolder = true;
   else if (a === "--no-title-from-folder") flags.titleFromFolder = false;
   else if (a === "--project-type") flags.projectType = argv[++i];
+  else if (a === "--industry") flags.industry = argv[++i];
   else if (a === "--limit") flags.limit = Number(argv[++i]);
   else if (a === "--tags") flags.tags = argv[++i].split(",").map((t) => t.trim()).filter(Boolean);
   else if (a === "--creator") flags.creator = argv[++i];
@@ -75,7 +95,8 @@ if (roots.length === 0) {
   console.error(
     "Usage : node worker/import-folder.js <dossier> [--dry-run] [--limit N]\n" +
       "         [--videos-only] [--tags a,b] [--creator nom]\n" +
-      "         [--brand-from-folder] [--project-type popup|store]\n" +
+      `         [--brand-from-folder] [--project-type ${PROJECT_TYPES.join("|")}]\n` +
+      `         [--industry ${INDUSTRIES.join("|")}]\n` +
       "         [--no-title-from-folder]"
   );
   process.exit(1);
@@ -84,8 +105,12 @@ if (!Number.isFinite(flags.limit) && flags.limit !== Infinity) {
   console.error("--limit attend un nombre");
   process.exit(1);
 }
-if (flags.projectType && !["popup", "store"].includes(flags.projectType)) {
-  console.error("--project-type attend « popup » ou « store »");
+if (flags.projectType && !PROJECT_TYPES.includes(flags.projectType)) {
+  console.error(`--project-type attend l'une de : ${PROJECT_TYPES.join(", ")}`);
+  process.exit(1);
+}
+if (flags.industry && !INDUSTRIES.includes(flags.industry)) {
+  console.error(`--industry attend l'une de : ${INDUSTRIES.join(", ")}`);
   process.exit(1);
 }
 if (!env.DATABASE_URL) {
@@ -241,6 +266,7 @@ for (const [i, f] of todo.entries()) {
       sourceUrl: null,
       importKey: f.importKey,
       projectType: flags.projectType,
+      industry: flags.industry,
       brandId,
       // Where it was shot is already in the file. The city label comes later,
       // in a separate pass: geocoding is a network call and has no business

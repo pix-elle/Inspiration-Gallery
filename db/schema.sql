@@ -10,6 +10,7 @@ create table brands (
   id         text primary key default gen_random_uuid()::text,
   name       text not null unique,
   slug       text not null unique,
+  industry   text,                          -- secteur, hérité par ses items
   created_at timestamptz not null default now()
 );
 
@@ -37,7 +38,8 @@ create table items (
   -- Colonnes pilotées par le back-office (web/app/admin).
   status         text not null default 'published',  -- voir la contrainte plus bas
   error          text,                        -- message d'échec du transcodage
-  project_type   text,                        -- 'popup' | 'store'
+  project_type   text,                        -- format, voir la contrainte plus bas
+  industry       text,                        -- dérogation ; sinon celui de la marque
   brand_id       text references brands(id) on delete set null,
   source_key     text,                        -- l'original intact sur R2, pour ré-encoder
   updated_at     timestamptz not null default now(),
@@ -47,8 +49,13 @@ create table items (
   -- 'unpublished' : masqué du site, réversible — à distinguer d'une suppression.
   constraint items_status_check
     check (status in ('processing','published','unpublished','failed')),
+  -- Le vocabulaire de ces deux axes vit dans web/lib/taxonomy.ts, avec ses
+  -- libellés. Ces contraintes en sont la copie côté base : elles gardent la
+  -- porte du CLI d'import (ingest/), le seul chemin d'écriture qui ne passe
+  -- pas par les routes du back-office. Ajouter une valeur, c'est donc éditer
+  -- taxonomy.ts et ce fichier dans le même commit.
   constraint items_project_type_check
-    check (project_type is null or project_type in ('popup','store'))
+    check (project_type is null or project_type in ('store','popup','shop_in_shop','window','exhibition','roadshow','event'))
 );
 
 create index items_created_at_idx on items (created_at desc);
@@ -131,3 +138,35 @@ create table if not exists settings (
   value      text not null,
   updated_at timestamptz not null default now()
 );
+
+-- 2026-09-08 — classement en deux axes : le format du projet, et le secteur
+-- de la marque dont ses items héritent. Le couple popup|store devenait trop
+-- étroit : les shop-in-shop, vitrines, salons et roadshows y étaient tous
+-- rangés en « boutique ».
+alter table brands add column if not exists industry text;
+alter table items  add column if not exists industry text;
+
+-- Les valeurs existantes restent valides : 'popup' et 'store' font partie du
+-- nouveau vocabulaire. La contrainte est donc élargie, jamais rompue.
+alter table items drop constraint if exists items_project_type_check;
+alter table items add constraint items_project_type_check
+  check (project_type is null or project_type in ('store','popup','shop_in_shop','window','exhibition','roadshow','event'));
+
+alter table items drop constraint if exists items_industry_check;
+alter table items add constraint items_industry_check
+  check (industry is null or industry in ('fashion','sport','watches','accessories','beauty','food','tech',
+                   'toys','home','department_store','culture'));
+
+alter table brands drop constraint if exists brands_industry_check;
+alter table brands add constraint brands_industry_check
+  check (industry is null or industry in ('fashion','sport','watches','accessories','beauty','food','tech',
+                   'toys','home','department_store','culture'));
+
+-- 2026-09-08 — rattrapage : ces quatre colonnes existaient en production
+-- depuis les imports géolocalisés, sans avoir jamais été consignées ici. Une
+-- base recréée à partir de ce fichier n'avait donc pas de quoi faire tourner
+-- le filtre « Lieu ».
+alter table items add column if not exists latitude  double precision;
+alter table items add column if not exists longitude double precision;
+alter table items add column if not exists city      text;
+alter table items add column if not exists country   text;

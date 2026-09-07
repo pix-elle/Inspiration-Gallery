@@ -6,6 +6,7 @@ import type {
   Brand,
   FilterOptions,
   GalleryFilters,
+  Industry,
   Item,
   ItemsPage,
   ProjectType,
@@ -31,6 +32,7 @@ export async function getItems({
   tag = null,
   type = null,
   projectType = null,
+  industry = null,
   brand = null,
   city = null,
 }: GetItemsOptions = {}): Promise<ItemsPage> {
@@ -50,6 +52,11 @@ export async function getItems({
       and (${tag}::text is null or ${tag} = any(i.tags))
       and (${type}::text is null or i.type = ${type})
       and (${projectType}::text is null or i.project_type = ${projectType})
+      -- L'industrie vient de la marque, sauf dérogation posée sur l'item.
+      -- La jointure existait déjà pour le filtre de marque, elle ne coûte
+      -- donc rien de plus ici.
+      and (${industry}::text is null
+           or coalesce(i.industry, b.industry) = ${industry})
       and (${brand}::text is null or b.slug = ${brand})
       and (${city}::text is null or i.city = ${city})
     order by i.created_at desc
@@ -203,6 +210,18 @@ export async function mergeBrands(fromId: string, intoId: string): Promise<numbe
   return moved.length;
 }
 
+// Le secteur de la marque, dont héritent tous ses items sans dérogation.
+// Une seule écriture ici reclasse donc les trente photos d'une boutique.
+export async function setBrandIndustry(
+  id: string,
+  industry: Industry | null
+): Promise<Brand | null> {
+  const rows = (await sql`
+    update brands set industry = ${industry} where id = ${id} returning *
+  `) as Brand[];
+  return rows[0] ?? null;
+}
+
 // brand_id est en "on delete set null" : supprimer une marque ne détruit
 // aucun item, ça les laisse sans marque — et le filtre « sans marque » les
 // retrouve aussitôt.
@@ -221,6 +240,7 @@ type NewItem = {
   title: string | null;
   description: string | null;
   projectType: ProjectType | null;
+  industry: Industry | null;
   brandId: string | null;
   sourceKey: string;
 };
@@ -232,11 +252,11 @@ type NewItem = {
 export async function createProcessingItem(item: NewItem) {
   await sql`
     insert into items
-      (id, type, title, description, tags, project_type, brand_id,
+      (id, type, title, description, tags, project_type, industry, brand_id,
        source_key, status, width, height)
     values
       (${item.id}, ${item.type}, ${item.title}, ${item.description}, ${[]},
-       ${item.projectType}, ${item.brandId}, ${item.sourceKey},
+       ${item.projectType}, ${item.industry}, ${item.brandId}, ${item.sourceKey},
        'processing', 0, 0)
   `;
 }
@@ -259,6 +279,8 @@ type ItemEdits = {
   title?: string | null;
   description?: string | null;
   projectType?: ProjectType | null;
+  /** null remet l'item sur l'industrie de sa marque. */
+  industry?: Industry | null;
   brandId?: string | null;
   status?: Item["status"];
 };
@@ -273,6 +295,7 @@ export async function updateItem(id: string, edits: ItemEdits) {
       title        = case when ${edits.title !== undefined} then ${edits.title ?? null} else title end,
       description  = case when ${edits.description !== undefined} then ${edits.description ?? null} else description end,
       project_type = case when ${edits.projectType !== undefined} then ${edits.projectType ?? null} else project_type end,
+      industry     = case when ${edits.industry !== undefined} then ${edits.industry ?? null} else industry end,
       brand_id     = case when ${edits.brandId !== undefined} then ${edits.brandId ?? null} else brand_id end,
       status       = coalesce(${edits.status ?? null}, status),
       updated_at   = now()
@@ -315,6 +338,7 @@ export async function updateItems(ids: string[], edits: ItemEdits) {
       title        = case when ${edits.title !== undefined} then ${edits.title ?? null} else title end,
       description  = case when ${edits.description !== undefined} then ${edits.description ?? null} else description end,
       project_type = case when ${edits.projectType !== undefined} then ${edits.projectType ?? null} else project_type end,
+      industry     = case when ${edits.industry !== undefined} then ${edits.industry ?? null} else industry end,
       brand_id     = case when ${edits.brandId !== undefined} then ${edits.brandId ?? null} else brand_id end,
       status       = coalesce(${edits.status ?? null}, status),
       updated_at   = now()
@@ -382,7 +406,7 @@ export function revalidateGallery(itemId?: string) {
 // would return nothing should not be offered — and the counts tell the
 // visitor what's worth clicking before they click it.
 export async function getFilterOptions(): Promise<FilterOptions> {
-  const [brands, cities, projectTypes, types] = await Promise.all([
+  const [brands, cities, projectTypes, industries, types] = await Promise.all([
     sql`
       select b.slug, b.name, count(*)::int as count
       from items i join brands b on b.id = i.brand_id
@@ -404,6 +428,13 @@ export async function getFilterOptions(): Promise<FilterOptions> {
       group by project_type
     `,
     sql`
+      select coalesce(i.industry, b.industry) as value, count(*)::int as count
+      from items i left join brands b on b.id = i.brand_id
+      where i.status = 'published' and coalesce(i.industry, b.industry) is not null
+      group by 1
+      order by count desc
+    `,
+    sql`
       select type as value, count(*)::int as count
       from items
       where status = 'published'
@@ -415,6 +446,7 @@ export async function getFilterOptions(): Promise<FilterOptions> {
     brands: brands as FilterOptions["brands"],
     cities: cities as FilterOptions["cities"],
     projectTypes: projectTypes as FilterOptions["projectTypes"],
+    industries: industries as FilterOptions["industries"],
     types: types as FilterOptions["types"],
   };
 }

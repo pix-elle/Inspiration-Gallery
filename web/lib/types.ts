@@ -1,3 +1,5 @@
+import type { Industry, ProjectType } from "./taxonomy";
+
 export type Item = {
   id: string;
   type: "image" | "video";
@@ -22,6 +24,9 @@ export type Item = {
   status: ItemStatus;
   error: string | null;
   project_type: ProjectType | null;
+  // Dérogation : l'industrie vient normalement de la marque. Renseignée ici,
+  // elle l'emporte — c'est le coalesce(i.industry, b.industry) des requêtes.
+  industry: Industry | null;
   brand_id: string | null;
   source_key: string | null; // the untouched original kept on R2
   updated_at: string;
@@ -39,6 +44,7 @@ export type GalleryFilters = {
   type?: "image" | "video" | null;
   tag?: string | null;
   projectType?: ProjectType | null;
+  industry?: Industry | null;
   brand?: string | null; // slug
   city?: string | null;
 };
@@ -47,6 +53,7 @@ export type FilterOptions = {
   brands: { slug: string; name: string; count: number }[];
   cities: { city: string; count: number }[];
   projectTypes: { value: ProjectType; count: number }[];
+  industries: { value: Industry; count: number }[];
   types: { value: "image" | "video"; count: number }[];
 };
 
@@ -54,12 +61,17 @@ export type FilterOptions = {
 // unpublished is a reversible hide, distinct from deleting the row.
 export type ItemStatus = "processing" | "published" | "unpublished" | "failed";
 
-export type ProjectType = "popup" | "store";
+// Le vocabulaire vit dans lib/taxonomy.ts, avec ses libellés. Réexporté ici
+// pour que les fichiers qui importaient déjà ProjectType depuis "@/lib/types"
+// n'aient rien à changer.
+export type { ProjectType, Industry } from "./taxonomy";
 
 export type Brand = {
   id: string;
   name: string;
   slug: string;
+  // Le secteur de la marque, dont ses items héritent.
+  industry: Industry | null;
   created_at: string;
 };
 

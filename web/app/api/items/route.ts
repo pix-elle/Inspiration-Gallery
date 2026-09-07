@@ -1,4 +1,5 @@
 import { getItems } from "@/lib/queries";
+import { asIndustry, asProjectType } from "@/lib/taxonomy";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -7,16 +8,13 @@ export async function GET(req: Request) {
   const typeParam = url.searchParams.get("type");
   const type = typeParam === "image" || typeParam === "video" ? typeParam : null;
 
-  const projectParam = url.searchParams.get("projet");
-  const projectType =
-    projectParam === "popup" || projectParam === "store" ? projectParam : null;
-
   const data = await getItems({
     limit: 12,
     cursor,
     tag,
     type,
-    projectType,
+    projectType: asProjectType(url.searchParams.get("projet")),
+    industry: asIndustry(url.searchParams.get("industrie")),
     brand: url.searchParams.get("marque"),
     city: url.searchParams.get("lieu"),
   });

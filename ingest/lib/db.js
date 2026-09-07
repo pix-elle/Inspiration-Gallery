@@ -17,14 +17,15 @@ export async function insertItem(row) {
       (id, type, title, description, tags, category, creator, source_url,
        width, height, dominant_color, blur_data_url,
        poster_url, image_base, video_url, video_av1_url, import_key,
-       project_type, brand_id, status, latitude, longitude)
+       project_type, industry, brand_id, status, latitude, longitude)
     values
       (${row.id}, ${row.type}, ${row.title}, ${row.description}, ${row.tags},
        ${row.category}, ${row.creator}, ${row.sourceUrl},
        ${row.width}, ${row.height}, ${row.dominantColor}, ${row.blurDataUrl},
        ${row.posterUrl}, ${row.imageBase}, ${row.videoUrl}, ${row.videoAv1Url},
        ${row.importKey ?? null},
-       ${row.projectType ?? null}, ${row.brandId ?? null}, 'published',
+       ${row.projectType ?? null}, ${row.industry ?? null},
+       ${row.brandId ?? null}, 'published',
        ${row.latitude ?? null}, ${row.longitude ?? null})
   `;
 }

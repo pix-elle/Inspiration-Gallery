@@ -9,13 +9,13 @@ import {
   revalidateGalleryMany,
   updateItems,
 } from "@/lib/queries";
-import type { Item, ItemStatus, ProjectType } from "@/lib/types";
+import { asIndustry, asProjectType } from "@/lib/taxonomy";
+import type { Item, ItemStatus } from "@/lib/types";
 
 // Segment statique : Next le résout avant /items/[id], et aucun identifiant
 // nanoid ne vaut "bulk". Les trois actions partagent ce fichier parce
 // qu'elles partagent la validation et la forme de réponse.
 
-const PROJECT_TYPES: ProjectType[] = ["popup", "store"];
 const SETTABLE_STATUS: ItemStatus[] = ["published", "unpublished"];
 // Deux plafonds, parce que le coût n'est pas le même selon l'action.
 // Modifier ou relancer tient dans un seul énoncé SQL : le plafond n'est
@@ -89,12 +89,8 @@ async function update(
 ): Promise<Response> {
   const edits: Parameters<typeof updateItems>[1] = {};
 
-  if ("projectType" in body) {
-    const value = String(body.projectType ?? "");
-    edits.projectType = PROJECT_TYPES.includes(value as ProjectType)
-      ? (value as ProjectType)
-      : null;
-  }
+  if ("projectType" in body) edits.projectType = asProjectType(body.projectType);
+  if ("industry" in body) edits.industry = asIndustry(body.industry);
   if ("brandId" in body) {
     edits.brandId = body.brandId ? String(body.brandId) : null;
   } else if ("brandName" in body) {

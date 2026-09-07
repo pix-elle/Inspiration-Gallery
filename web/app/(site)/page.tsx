@@ -1,5 +1,5 @@
 import { GalleryFeed } from "@/components/organisms/GalleryFeed";
-import type { ProjectType } from "@/lib/types";
+import { asIndustry, asProjectType } from "@/lib/taxonomy";
 
 // Reading searchParams makes this route dynamic. That's the price of shared
 // filtered URLs: the alternative — filtering in the browser — would show the
@@ -15,7 +15,6 @@ export default async function HomePage({
     return (Array.isArray(value) ? value[0] : value) ?? null;
   };
 
-  const projet = one("projet");
   // La galerie ouvre sur les vidéos. L'URL nue ne peut donc plus vouloir dire
   // « aucun filtre de type » : c'est `all` qui porte ce sens désormais, et
   // l'onglet Tout de la barre de filtres est ce qui le rend atteignable.
@@ -25,10 +24,8 @@ export default async function HomePage({
     <GalleryFeed
       filters={{
         type: type === "image" || type === "video" ? type : null,
-        projectType:
-          projet === "popup" || projet === "store"
-            ? (projet as ProjectType)
-            : null,
+        projectType: asProjectType(one("projet")),
+        industry: asIndustry(one("industrie")),
         brand: one("marque"),
         city: one("lieu"),
       }}
